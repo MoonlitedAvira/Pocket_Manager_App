@@ -43,7 +43,7 @@ fun TaskListScreen(viewModel: TaskViewModel, onOpenDrawer: () -> Unit) {
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { }) {
+            FloatingActionButton(onClick = { showAddDialog = true }) {
                 Icon(Icons.Filled.Add, contentDescription = "Добавить")
             }
         }
@@ -77,24 +77,30 @@ fun TaskListScreen(viewModel: TaskViewModel, onOpenDrawer: () -> Unit) {
         if (showAddDialog) {
             var newTaskTitle by remember { mutableStateOf("") }
             AlertDialog(
-                onDismissRequest = { },
+                onDismissRequest = { showAddDialog = false },
                 title = { Text("Новая задача") },
                 text = {
                     OutlinedTextField(
                         value = newTaskTitle,
-                        onValueChange = { },
+                        onValueChange = { newTaskTitle = it },
                         label = { Text("Название") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
                 },
                 confirmButton = {
-                    Button(onClick = { viewModel.addTask(newTaskTitle); }) {
+                    Button(
+                        onClick = {
+                            viewModel.addTask(newTaskTitle)
+                            showAddDialog = false
+                        },
+                        enabled = newTaskTitle.isNotBlank()
+                    ) {
                         Text("Добавить")
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { }) { Text("Отмена") }
+                    TextButton(onClick = { showAddDialog = false }) { Text("Отмена") }
                 }
             )
         }
@@ -102,27 +108,30 @@ fun TaskListScreen(viewModel: TaskViewModel, onOpenDrawer: () -> Unit) {
         taskToEdit?.let { task ->
             var editTitle by remember { mutableStateOf(task.title) }
             AlertDialog(
-                onDismissRequest = { },
+                onDismissRequest = { taskToEdit = null },
                 title = { Text("Редактировать задачу") },
                 text = {
                     OutlinedTextField(
                         value = editTitle,
-                        onValueChange = { },
+                        onValueChange = { editTitle = it },
                         label = { Text("Название") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
                 },
                 confirmButton = {
-                    Button(onClick = {
-                        viewModel.editTask(task.id, editTitle)
-                       
-                    }) {
+                    Button(
+                        onClick = {
+                            viewModel.editTask(task.id, editTitle)
+                            taskToEdit = null
+                        },
+                        enabled = editTitle.isNotBlank()
+                    ) {
                         Text("Сохранить")
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { }) { Text("Отмена") }
+                    TextButton(onClick = { taskToEdit = null }) { Text("Отмена") }
                 }
             )
         }
