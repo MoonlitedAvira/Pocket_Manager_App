@@ -17,3 +17,6 @@ object PomodoroRoute
 
 @Serializable
 object SanTestRoute
+
+@Serializable
+object StatsRoute

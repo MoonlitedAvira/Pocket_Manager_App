@@ -42,4 +42,7 @@ interface ApiService {
 
     @POST("/san-test")
     suspend fun saveSanTest(@Body testData: SanTestCreate)
+
+    @GET("/san-test")
+    suspend fun getSanResults(): List<SanTestResponse>
 }

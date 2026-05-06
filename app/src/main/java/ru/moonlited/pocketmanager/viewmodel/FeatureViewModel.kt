@@ -7,10 +7,12 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import ru.moonlited.pocketmanager.data.api.ApiService
 import ru.moonlited.pocketmanager.data.api.PomodoroCreate
 import ru.moonlited.pocketmanager.data.api.SanTestCreate
+import ru.moonlited.pocketmanager.data.api.SanTestResponse
 import java.time.Instant
 
 class PomodoroViewModel(private val apiService: ApiService) : ViewModel() {
@@ -53,9 +55,9 @@ class PomodoroViewModel(private val apiService: ApiService) : ViewModel() {
                 val endTime = Instant.now()
                 apiService.savePomodoro(
                     PomodoroCreate(
-                        start_time = startTime.toString(),
-                        end_time = endTime.toString(),
-                        duration_minutes = 25
+                        startTime = startTime.toString(),
+                        endTime = endTime.toString(),
+                        durationMinutes = 25
                     )
                 )
                 startTime = null
@@ -69,25 +71,51 @@ class PomodoroViewModel(private val apiService: ApiService) : ViewModel() {
 class SanViewModel(private val apiService: ApiService) : ViewModel() {
     val isSaved = MutableStateFlow(false)
 
+    private val _sanHistory = MutableStateFlow<List<SanTestResponse>>(emptyList())
+    val sanHistory: StateFlow<List<SanTestResponse>> = _sanHistory
+
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading
+
     fun saveResults(s: Float, a: Float, n: Float) {
         viewModelScope.launch {
             try {
                 apiService.saveSanTest(SanTestCreate(s, a, n))
                 isSaved.value = true
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+                fetchHistory()
+            } catch (e: Exception) { e.printStackTrace() }
         }
     }
 
-    fun resetState() {
-        isSaved.value = false
+    fun fetchHistory() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                _sanHistory.value = apiService.getSanResults()
+            } catch (e: Exception) { e.printStackTrace() }
+            finally { _isLoading.value = false }
+        }
     }
+
+    fun resetState() { isSaved.value = false }
 }
 
 class PomodoroViewModelFactory(private val apiService: ApiService) : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T = PomodoroViewModel(apiService) as T
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(PomodoroViewModel::class.java)) {
+            return PomodoroViewModel(apiService) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
+    }
 }
+
 class SanViewModelFactory(private val apiService: ApiService) : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T = SanViewModel(apiService) as T
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(SanViewModel::class.java)) {
+            return SanViewModel(apiService) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
+    }
 }

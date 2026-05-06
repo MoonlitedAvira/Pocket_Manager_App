@@ -11,21 +11,18 @@ import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import ru.moonlited.pocketmanager.utils.SessionManager
 
 object ApiClient {
-    private const val BASE_URL = "http://192.168.0.106:8000/"
+    private const val BASE_URL = "http://87.242.102.136:8000/"
 
     private val json = Json { ignoreUnknownKeys = true }
 
     fun create(sessionManager: SessionManager): ApiService {
-        // Логирование запросов в Logcat (очень помогает при дебаге)
         val loggingInterceptor = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
         }
 
-        // Перехватчик для добавления токена
         val authInterceptor = Interceptor { chain ->
             val requestBuilder = chain.request().newBuilder()
 
-            // Если токен есть, добавляем его в заголовок
             sessionManager.fetchAuthToken()?.let { token ->
                 requestBuilder.addHeader("Authorization", "Bearer $token")
             }

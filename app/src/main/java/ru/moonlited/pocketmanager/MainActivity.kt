@@ -102,6 +102,15 @@ class MainActivity : ComponentActivity() {
                                     },
                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 24.dp)
                                 )
+                                NavigationDrawerItem(
+                                    label = { Text("Статистика") },
+                                    selected = currentRoute?.contains("StatsRoute") == true,
+                                    onClick = {
+                                        scope.launch { drawerState.close() }
+                                        navController.navigate(StatsRoute)
+                                    },
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                                )
                             }
                         }
                     ) {
@@ -154,6 +163,13 @@ class MainActivity : ComponentActivity() {
                             composable<SanTestRoute> {
                                 val sanViewModel: SanViewModel = viewModel(factory = sanViewModelFactory)
                                 SanTestScreen(
+                                    viewModel = sanViewModel,
+                                    onOpenDrawer = { scope.launch { drawerState.open() } }
+                                )
+                            }
+                            composable<StatsRoute> {
+                                val sanViewModel: SanViewModel = viewModel(factory = sanViewModelFactory)
+                                StatsScreen(
                                     viewModel = sanViewModel,
                                     onOpenDrawer = { scope.launch { drawerState.open() } }
                                 )

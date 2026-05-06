@@ -43,7 +43,7 @@ fun TaskListScreen(viewModel: TaskViewModel, onOpenDrawer: () -> Unit) {
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
+            FloatingActionButton(onClick = { }) {
                 Icon(Icons.Filled.Add, contentDescription = "Добавить")
             }
         }
@@ -77,24 +77,24 @@ fun TaskListScreen(viewModel: TaskViewModel, onOpenDrawer: () -> Unit) {
         if (showAddDialog) {
             var newTaskTitle by remember { mutableStateOf("") }
             AlertDialog(
-                onDismissRequest = { showAddDialog = false },
+                onDismissRequest = { },
                 title = { Text("Новая задача") },
                 text = {
                     OutlinedTextField(
                         value = newTaskTitle,
-                        onValueChange = { newTaskTitle = it },
+                        onValueChange = { },
                         label = { Text("Название") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
                 },
                 confirmButton = {
-                    Button(onClick = { viewModel.addTask(newTaskTitle); showAddDialog = false }) {
+                    Button(onClick = { viewModel.addTask(newTaskTitle); }) {
                         Text("Добавить")
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showAddDialog = false }) { Text("Отмена") }
+                    TextButton(onClick = { }) { Text("Отмена") }
                 }
             )
         }
@@ -102,12 +102,12 @@ fun TaskListScreen(viewModel: TaskViewModel, onOpenDrawer: () -> Unit) {
         taskToEdit?.let { task ->
             var editTitle by remember { mutableStateOf(task.title) }
             AlertDialog(
-                onDismissRequest = { taskToEdit = null },
+                onDismissRequest = { },
                 title = { Text("Редактировать задачу") },
                 text = {
                     OutlinedTextField(
                         value = editTitle,
-                        onValueChange = { editTitle = it },
+                        onValueChange = { },
                         label = { Text("Название") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
@@ -116,13 +116,13 @@ fun TaskListScreen(viewModel: TaskViewModel, onOpenDrawer: () -> Unit) {
                 confirmButton = {
                     Button(onClick = {
                         viewModel.editTask(task.id, editTitle)
-                        taskToEdit = null
+                       
                     }) {
                         Text("Сохранить")
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { taskToEdit = null }) { Text("Отмена") }
+                    TextButton(onClick = { }) { Text("Отмена") }
                 }
             )
         }
@@ -147,16 +147,16 @@ fun TaskCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Checkbox(
-                checked = task.is_completed,
+                checked = task.isCompleted,
                 onCheckedChange = onCheckedChange,
-                enabled = !task.is_completed
+                enabled = !task.isCompleted
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = task.title,
                 style = MaterialTheme.typography.bodyLarge,
-                textDecoration = if (task.is_completed) TextDecoration.LineThrough else null,
-                color = if (task.is_completed) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                textDecoration = if (task.isCompleted) TextDecoration.LineThrough else null,
+                color = if (task.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f)
             )
 

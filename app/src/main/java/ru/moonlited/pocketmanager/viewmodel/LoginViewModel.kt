@@ -32,7 +32,7 @@ class LoginViewModel(
             try {
                 val response = apiService.login(email, password)
 
-                sessionManager.saveAuthToken(response.access_token)
+                sessionManager.saveAuthToken(response.accessToken)
 
                 _loginState.value = LoginState.Success
             } catch (e: Exception) {
@@ -47,10 +47,10 @@ class LoginViewModel(
                 apiService.register(UserCreateRequest(email, password))
 
                 val response = apiService.login(email, password)
-                sessionManager.saveAuthToken(response.access_token)
+                sessionManager.saveAuthToken(response.accessToken)
 
                 _loginState.value = LoginState.Success
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 _loginState.value = LoginState.Error("Ошибка регистрации (возможно email занят)")
             }
         }
