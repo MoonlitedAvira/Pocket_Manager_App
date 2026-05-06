@@ -1,4 +1,4 @@
-// ui/screens/LoginScreen.kt
+// ui/screens/RegisterScreen.kt
 package ru.moonlited.pocketmanager.ui.screens
 
 import androidx.compose.foundation.layout.*
@@ -18,10 +18,10 @@ import ru.moonlited.pocketmanager.viewmodel.LoginState
 import ru.moonlited.pocketmanager.viewmodel.LoginViewModel
 
 @Composable
-fun LoginScreen(
+fun RegisterScreen(
     viewModel: LoginViewModel,
-    onLoginSuccess: () -> Unit,
-    onNavigateToRegister: () -> Unit
+    onRegisterSuccess: () -> Unit,
+    onNavigateBack: () -> Unit
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -31,7 +31,7 @@ fun LoginScreen(
 
     LaunchedEffect(loginState) {
         if (loginState is LoginState.Success) {
-            onLoginSuccess()
+            onRegisterSuccess()
         }
     }
 
@@ -41,7 +41,7 @@ fun LoginScreen(
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "Pocket Manager",
+            text = "Создать аккаунт",
             style = MaterialTheme.typography.headlineLarge,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(bottom = 32.dp)
@@ -81,25 +81,20 @@ fun LoginScreen(
         if (loginState is LoginState.Loading) {
             CircularProgressIndicator()
         } else {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
+            Button(
+                onClick = { viewModel.register(email, password) },
+                modifier = Modifier.fillMaxWidth().height(50.dp)
             ) {
-                Button(
-                    onClick = { viewModel.login(email, password) },
-                    modifier = Modifier.fillMaxWidth().height(50.dp)
-                ) {
-                    Text("Войти", style = MaterialTheme.typography.titleMedium)
-                }
+                Text("Зарегистрироваться", style = MaterialTheme.typography.titleMedium)
+            }
 
-                Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-                TextButton(onClick = {
-                    viewModel.resetState()
-                    onNavigateToRegister()
-                }) {
-                    Text("Нет аккаунта? Зарегистрироваться")
-                }
+            TextButton(onClick = {
+                viewModel.resetState()
+                onNavigateBack()
+            }) {
+                Text("Уже есть аккаунт? Войти")
             }
         }
 

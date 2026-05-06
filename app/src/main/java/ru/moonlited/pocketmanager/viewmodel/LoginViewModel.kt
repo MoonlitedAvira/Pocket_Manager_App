@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import ru.moonlited.pocketmanager.data.api.ApiService
+import ru.moonlited.pocketmanager.data.api.UserCreateRequest
 import ru.moonlited.pocketmanager.utils.SessionManager
 
 sealed class LoginState {
@@ -36,6 +37,21 @@ class LoginViewModel(
                 _loginState.value = LoginState.Success
             } catch (e: Exception) {
                 _loginState.value = LoginState.Error("Ошибка авторизации: ${e.localizedMessage}")
+            }
+        }
+    }
+    fun register(email: String, password: String) {
+        viewModelScope.launch {
+            _loginState.value = LoginState.Loading
+            try {
+                apiService.register(UserCreateRequest(email, password))
+
+                val response = apiService.login(email, password)
+                sessionManager.saveAuthToken(response.access_token)
+
+                _loginState.value = LoginState.Success
+            } catch (e: Exception) {
+                _loginState.value = LoginState.Error("Ошибка регистрации (возможно email занят)")
             }
         }
     }

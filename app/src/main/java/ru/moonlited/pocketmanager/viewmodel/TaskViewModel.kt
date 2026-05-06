@@ -60,6 +60,30 @@ class TaskViewModel(private val apiService: ApiService) : ViewModel() {
             }
         }
     }
+    fun editTask(taskId: Int, newTitle: String) {
+        if (newTitle.isBlank()) return
+        viewModelScope.launch {
+            try {
+                val updatedTask = apiService.updateTask(taskId, TaskCreateRequest(title = newTitle))
+                _tasks.value = _tasks.value.map {
+                    if (it.id == taskId) updatedTask else it
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun deleteTask(taskId: Int) {
+        viewModelScope.launch {
+            try {
+                apiService.deleteTask(taskId)
+                _tasks.value = _tasks.value.filter { it.id != taskId }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
 }
 
 class TaskViewModelFactory(private val apiService: ApiService) : ViewModelProvider.Factory {

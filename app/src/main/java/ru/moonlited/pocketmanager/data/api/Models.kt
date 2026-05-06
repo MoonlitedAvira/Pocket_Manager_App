@@ -10,6 +10,18 @@ data class TokenResponse(
 )
 
 @Serializable
+data class UserCreateRequest(
+    val email: String,
+    val password: String
+)
+
+@Serializable
+data class UserResponse(
+    val id: Int,
+    val email: String,
+    val role: String
+)
+@Serializable
 data class TaskCreateRequest(
     val title: String,
     val description: String? = null

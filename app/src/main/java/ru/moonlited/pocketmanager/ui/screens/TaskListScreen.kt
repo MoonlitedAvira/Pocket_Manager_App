@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,14 +19,13 @@ import ru.moonlited.pocketmanager.viewmodel.TaskViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TaskListScreen(
-    viewModel: TaskViewModel,
-    onOpenDrawer: () -> Unit
-) {
+fun TaskListScreen(viewModel: TaskViewModel, onOpenDrawer: () -> Unit) {
     val tasks by viewModel.tasks.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
 
     var showAddDialog by remember { mutableStateOf(false) }
+
+    var taskToEdit by remember { mutableStateOf<TaskResponse?>(null) }
 
     Scaffold(
         topBar = {
@@ -37,14 +37,14 @@ fun TaskListScreen(
                 ),
                 navigationIcon = {
                     IconButton(onClick = onOpenDrawer) {
-                        Icon(imageVector = Icons.Default.Menu, contentDescription = "Открыть меню")
+                        Icon(imageVector = Icons.Default.Menu, contentDescription = "Меню")
                     }
                 }
             )
         },
         floatingActionButton = {
             FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(Icons.Filled.Add, contentDescription = "Добавить задачу")
+                Icon(Icons.Filled.Add, contentDescription = "Добавить")
             }
         }
     ) { paddingValues ->
@@ -65,9 +65,9 @@ fun TaskListScreen(
                     items(tasks) { task ->
                         TaskCard(
                             task = task,
-                            onCheckedChange = { isChecked ->
-                                if (isChecked) viewModel.completeTask(task.id)
-                            }
+                            onCheckedChange = { if (it) viewModel.completeTask(task.id) },
+                            onEditClick = { taskToEdit = task },
+                            onDeleteClick = { viewModel.deleteTask(task.id) }
                         )
                     }
                 }
@@ -76,7 +76,6 @@ fun TaskListScreen(
 
         if (showAddDialog) {
             var newTaskTitle by remember { mutableStateOf("") }
-
             AlertDialog(
                 onDismissRequest = { showAddDialog = false },
                 title = { Text("Новая задача") },
@@ -90,17 +89,40 @@ fun TaskListScreen(
                     )
                 },
                 confirmButton = {
-                    Button(onClick = {
-                        viewModel.addTask(newTaskTitle)
-                        showAddDialog = false
-                    }) {
+                    Button(onClick = { viewModel.addTask(newTaskTitle); showAddDialog = false }) {
                         Text("Добавить")
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showAddDialog = false }) {
-                        Text("Отмена")
+                    TextButton(onClick = { showAddDialog = false }) { Text("Отмена") }
+                }
+            )
+        }
+
+        taskToEdit?.let { task ->
+            var editTitle by remember { mutableStateOf(task.title) }
+            AlertDialog(
+                onDismissRequest = { taskToEdit = null },
+                title = { Text("Редактировать задачу") },
+                text = {
+                    OutlinedTextField(
+                        value = editTitle,
+                        onValueChange = { editTitle = it },
+                        label = { Text("Название") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                },
+                confirmButton = {
+                    Button(onClick = {
+                        viewModel.editTask(task.id, editTitle)
+                        taskToEdit = null
+                    }) {
+                        Text("Сохранить")
                     }
+                },
+                dismissButton = {
+                    TextButton(onClick = { taskToEdit = null }) { Text("Отмена") }
                 }
             )
         }
@@ -108,13 +130,20 @@ fun TaskListScreen(
 }
 
 @Composable
-fun TaskCard(task: TaskResponse, onCheckedChange: (Boolean) -> Unit) {
+fun TaskCard(
+    task: TaskResponse,
+    onCheckedChange: (Boolean) -> Unit,
+    onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit
+) {
+    var showMenu by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, top = 8.dp, bottom = 8.dp, end = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Checkbox(
@@ -127,8 +156,28 @@ fun TaskCard(task: TaskResponse, onCheckedChange: (Boolean) -> Unit) {
                 text = task.title,
                 style = MaterialTheme.typography.bodyLarge,
                 textDecoration = if (task.is_completed) TextDecoration.LineThrough else null,
-                color = if (task.is_completed) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
+                color = if (task.is_completed) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f)
             )
+
+            Box {
+                IconButton(onClick = { showMenu = true }) {
+                    Icon(Icons.Default.MoreVert, contentDescription = "Опции")
+                }
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Редактировать") },
+                        onClick = { showMenu = false; onEditClick() }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Удалить", color = MaterialTheme.colorScheme.error) },
+                        onClick = { showMenu = false; onDeleteClick() }
+                    )
+                }
+            }
         }
     }
 }

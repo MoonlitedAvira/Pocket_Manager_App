@@ -111,13 +111,29 @@ class MainActivity : ComponentActivity() {
                         ) {
                             composable<LoginRoute> {
                                 val loginViewModel: LoginViewModel = viewModel(factory = loginViewModelFactory)
-
                                 LoginScreen(
                                     viewModel = loginViewModel,
                                     onLoginSuccess = {
                                         navController.navigate(TaskListRoute) {
                                             popUpTo(LoginRoute) { inclusive = true }
                                         }
+                                    },
+                                    onNavigateToRegister = {
+                                        navController.navigate(RegisterRoute)
+                                    }
+                                )
+                            }
+                            composable<RegisterRoute> {
+                                val loginViewModel: LoginViewModel = viewModel(factory = loginViewModelFactory)
+                                RegisterScreen(
+                                    viewModel = loginViewModel,
+                                    onRegisterSuccess = {
+                                        navController.navigate(TaskListRoute) {
+                                            popUpTo(0) { inclusive = true }
+                                        }
+                                    },
+                                    onNavigateBack = {
+                                        navController.popBackStack()
                                     }
                                 )
                             }
