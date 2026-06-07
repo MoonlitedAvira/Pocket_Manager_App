@@ -20,3 +20,27 @@ object SanTestRoute
 
 @Serializable
 object StatsRoute
+
+@Serializable
+object TestsRoute
+
+@Serializable
+object MaslachTestRoute
+
+@Serializable
+object MunsterbergTestRoute
+
+@Serializable
+object RoleSelectionRoute
+
+@Serializable
+object SettingsRoute
+
+@Serializable
+object ProfileRoute
+
+@Serializable
+object ManagerCompanyRoute
+
+@Serializable
+object WorkingDayTimerRoute

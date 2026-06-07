@@ -31,6 +31,7 @@ fun RegisterScreen(
 
     LaunchedEffect(loginState) {
         if (loginState is LoginState.Success) {
+            viewModel.resetState()
             onRegisterSuccess()
         }
     }

@@ -11,42 +11,61 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import androidx.room.Room
+import ru.moonlited.pocketmanager.data.local.AppDatabase
 import ru.moonlited.pocketmanager.data.api.ApiClient
 import ru.moonlited.pocketmanager.ui.navigation.*
 import ru.moonlited.pocketmanager.ui.screens.*
 import ru.moonlited.pocketmanager.ui.theme.PocketManagerTheme
 import ru.moonlited.pocketmanager.utils.SessionManager
+import org.koin.android.ext.android.inject
 import ru.moonlited.pocketmanager.viewmodel.LoginViewModel
 import ru.moonlited.pocketmanager.viewmodel.LoginViewModelFactory
-import ru.moonlited.pocketmanager.viewmodel.TaskViewModel
-import ru.moonlited.pocketmanager.viewmodel.TaskViewModelFactory
 import ru.moonlited.pocketmanager.viewmodel.PomodoroViewModel
 import ru.moonlited.pocketmanager.viewmodel.PomodoroViewModelFactory
 import ru.moonlited.pocketmanager.viewmodel.SanViewModel
 import ru.moonlited.pocketmanager.viewmodel.SanViewModelFactory
+import ru.moonlited.pocketmanager.viewmodel.ProfileViewModel
+import ru.moonlited.pocketmanager.viewmodel.ProfileViewModelFactory
+import ru.moonlited.pocketmanager.viewmodel.ManagerCompanyViewModel
+import ru.moonlited.pocketmanager.viewmodel.ManagerCompanyViewModelFactory
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.os.Build
+import androidx.core.content.ContextCompat
+import android.content.pm.PackageManager
+import androidx.compose.foundation.layout.fillMaxWidth
 
 class MainActivity : ComponentActivity() {
+    private val sessionManager: SessionManager by inject()
+    private val apiService: ru.moonlited.pocketmanager.data.api.ApiService by inject()
+    private val appDatabase: ru.moonlited.pocketmanager.data.local.AppDatabase by inject()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-
-        val sessionManager = SessionManager(applicationContext)
-        val apiService = ApiClient.create(sessionManager)
         val loginViewModelFactory = LoginViewModelFactory(apiService, sessionManager)
-        val taskViewModelFactory = TaskViewModelFactory(apiService)
-        val pomodoroViewModelFactory = PomodoroViewModelFactory(apiService)
-        val sanViewModelFactory = SanViewModelFactory(apiService)
+        val pomodoroViewModelFactory = PomodoroViewModelFactory(applicationContext, apiService, sessionManager)
 
-        val startScreen: Any = if (sessionManager.fetchAuthToken() != null) TaskListRoute else LoginRoute
+        val sanViewModelFactory = SanViewModelFactory(apiService, sessionManager)
+        val profileViewModelFactory = ProfileViewModelFactory(apiService, sessionManager)
+        val managerCompanyViewModelFactory = ManagerCompanyViewModelFactory(apiService)
+
+        val startScreen: Any = if (sessionManager.fetchAuthToken() != null) ProfileRoute else LoginRoute
 
         setContent {
             PocketManagerTheme {
@@ -61,69 +80,137 @@ class MainActivity : ComponentActivity() {
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
                     val currentRoute = navBackStackEntry?.destination?.route
 
+                    val permission = android.Manifest.permission.POST_NOTIFICATIONS
+                    val launcher = rememberLauncherForActivityResult(
+                        ActivityResultContracts.RequestPermission()
+                    ) { }
+
+                    LaunchedEffect(Unit) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            if (ContextCompat.checkSelfPermission(this@MainActivity, permission) != PackageManager.PERMISSION_GRANTED) {
+                                launcher.launch(permission)
+                            }
+                        }
+                    }
+
+                    val profileViewModel: ProfileViewModel = viewModel(factory = profileViewModelFactory)
+                    val userState by profileViewModel.user.collectAsState()
+
                     ModalNavigationDrawer(
                         drawerState = drawerState,
                         gesturesEnabled = currentRoute?.contains("LoginRoute") != true,
                         drawerContent = {
-                            ModalDrawerSheet {
+                            ModalDrawerSheet(modifier = Modifier.fillMaxWidth(0.75f)) {
                                 Spacer(Modifier.height(32.dp))
-                                Text("Меню", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.headlineMedium)
+                                Text("Меню", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.titleLarge)
                                 HorizontalDivider()
                                 Spacer(Modifier.height(8.dp))
 
                                 NavigationDrawerItem(
-                                    label = { Text("Мои задачи") },
+                                    label = { Text("Мой Профиль", fontSize = 14.sp) },
+                                    selected = currentRoute?.contains("ProfileRoute") == true,
+                                    onClick = { scope.launch { drawerState.close() }; navController.navigate(ProfileRoute) },
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
+                                )
+                                NavigationDrawerItem(
+                                    label = { Text("Задачи", fontSize = 14.sp) },
                                     selected = currentRoute?.contains("TaskListRoute") == true,
                                     onClick = { scope.launch { drawerState.close() }; navController.navigate(TaskListRoute) },
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
                                 )
                                 NavigationDrawerItem(
-                                    label = { Text("Таймер Pomodoro") },
+                                    label = { Text("Таймер Pomodoro", fontSize = 14.sp) },
                                     selected = currentRoute?.contains("PomodoroRoute") == true,
                                     onClick = { scope.launch { drawerState.close() }; navController.navigate(PomodoroRoute) },
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
+                                )
+                                
+                                if (userState?.role == "manager" || userState?.role == "director") {
+                                    NavigationDrawerItem(
+                                        label = { Text("Управление компанией", fontSize = 14.sp) },
+                                        selected = currentRoute?.contains("ManagerCompanyRoute") == true,
+                                        onClick = { scope.launch { drawerState.close() }; navController.navigate(ManagerCompanyRoute) },
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
+                                    )
+                                }
+                                
+                                NavigationDrawerItem(
+                                    label = { Text("Психологические тесты", fontSize = 14.sp) },
+                                    selected = currentRoute?.contains("TestsRoute") == true,
+                                    onClick = { scope.launch { drawerState.close() }; navController.navigate(TestsRoute) },
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
                                 )
                                 NavigationDrawerItem(
-                                    label = { Text("Тест САН") },
-                                    selected = currentRoute?.contains("SanTestRoute") == true,
-                                    onClick = { scope.launch { drawerState.close() }; navController.navigate(SanTestRoute) },
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                                    label = { Text("Статистика", fontSize = 14.sp) },
+                                    selected = currentRoute?.contains("StatsRoute") == true,
+                                    onClick = { scope.launch { drawerState.close() }; navController.navigate(StatsRoute) },
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
                                 )
                                 Spacer(Modifier.weight(1f))
                                 NavigationDrawerItem(
-                                    label = { Text("Выйти", color = MaterialTheme.colorScheme.error) },
+                                    label = { Text("Выйти", color = MaterialTheme.colorScheme.error, fontSize = 14.sp) },
                                     selected = false,
                                     onClick = {
-                                        scope.launch { drawerState.close() }
-                                        sessionManager.clearToken()
-                                        navController.navigate(LoginRoute) {
-                                            popUpTo(0) { inclusive = true }
+                                        scope.launch { 
+                                            drawerState.close() 
+                                            sessionManager.clearToken()
                                         }
                                     },
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 24.dp)
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
                                 )
                                 NavigationDrawerItem(
-                                    label = { Text("Статистика") },
-                                    selected = currentRoute?.contains("StatsRoute") == true,
+                                    label = { Text("Настройки", fontSize = 14.sp) },
+                                    selected = currentRoute?.contains("SettingsRoute") == true,
                                     onClick = {
                                         scope.launch { drawerState.close() }
-                                        navController.navigate(StatsRoute)
+                                        navController.navigate(SettingsRoute)
                                     },
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
                                 )
                             }
                         }
                     ) {
+                        val pomodoroViewModel: PomodoroViewModel = viewModel(factory = pomodoroViewModelFactory)
+                        val loginViewModel: LoginViewModel = viewModel(factory = loginViewModelFactory)
+                        val sanViewModel: SanViewModel = viewModel(factory = sanViewModelFactory)
+                        val profileViewModel: ProfileViewModel = viewModel(factory = profileViewModelFactory)
+
+                        LaunchedEffect(Unit) {
+                            sessionManager.authEvent.collect { isValid ->
+                                if (!isValid) {
+                                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                        appDatabase.clearAllTables()
+                                    }
+                                    loginViewModel.resetState()
+                                    navController.navigate(LoginRoute) {
+                                        popUpTo(0) { inclusive = true }
+                                    }
+                                } else {
+                                    profileViewModel.fetchProfile()
+                                    com.google.firebase.messaging.FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+                                        if (task.isSuccessful) {
+                                            val token = task.result
+                                            scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                                try {
+                                                    apiService.updateFcmToken(ru.moonlited.pocketmanager.data.api.FCMTokenUpdate(token))
+                                                } catch (e: Exception) { e.printStackTrace() }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         NavHost(
                             navController = navController,
                             startDestination = startScreen
                         ) {
                             composable<LoginRoute> {
-                                val loginViewModel: LoginViewModel = viewModel(factory = loginViewModelFactory)
                                 LoginScreen(
                                     viewModel = loginViewModel,
                                     onLoginSuccess = {
-                                        navController.navigate(TaskListRoute) {
+                                        profileViewModel.fetchProfile()
+                                        navController.navigate(ProfileRoute) {
                                             popUpTo(LoginRoute) { inclusive = true }
                                         }
                                     },
@@ -133,12 +220,11 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                             composable<RegisterRoute> {
-                                val loginViewModel: LoginViewModel = viewModel(factory = loginViewModelFactory)
-                                RegisterScreen(
-                                    viewModel = loginViewModel,
+                            RegisterScreen(
+                                viewModel = loginViewModel,
                                     onRegisterSuccess = {
-                                        navController.navigate(TaskListRoute) {
-                                            popUpTo(0) { inclusive = true }
+                                        navController.navigate(RoleSelectionRoute) {
+                                            popUpTo(LoginRoute) { inclusive = true }
                                         }
                                     },
                                     onNavigateBack = {
@@ -146,31 +232,102 @@ class MainActivity : ComponentActivity() {
                                     }
                                 )
                             }
+                            composable<RoleSelectionRoute> {
+                                RoleSelectionScreen(
+                                    viewModel = loginViewModel,
+                                    onRoleSelected = {
+                                        profileViewModel.fetchProfile() // Refresh after assigning role
+                                        navController.navigate(TaskListRoute) {
+                                            popUpTo(0) { inclusive = true }
+                                        }
+                                    }
+                                )
+                            }
                             composable<TaskListRoute> {
-                                val taskViewModel: TaskViewModel = viewModel(factory = taskViewModelFactory)
                                 TaskListScreen(
-                                    viewModel = taskViewModel,
                                     onOpenDrawer = { scope.launch { drawerState.open() } }
                                 )
                             }
                             composable<PomodoroRoute> {
-                                val pomodoroViewModel: PomodoroViewModel = viewModel(factory = pomodoroViewModelFactory)
-                                PomodoroScreen(
-                                    viewModel = pomodoroViewModel,
+                            PomodoroScreen(
+                                viewModel = pomodoroViewModel,
                                     onOpenDrawer = { scope.launch { drawerState.open() } }
                                 )
                             }
                             composable<SanTestRoute> {
-                                val sanViewModel: SanViewModel = viewModel(factory = sanViewModelFactory)
+                                val previousRoute = navController.previousBackStackEntry?.destination?.route
+                                val fromWorkStart = previousRoute?.contains("ProfileRoute") == true
+
                                 SanTestScreen(
                                     viewModel = sanViewModel,
-                                    onOpenDrawer = { scope.launch { drawerState.open() } }
+                                    fromWorkStart = fromWorkStart,
+                                    onOpenDrawer = { scope.launch { drawerState.open() } },
+                                    onNavigateToStats = { navController.navigate(StatsRoute) },
+                                    onNavigateToTimer = { navController.navigate(WorkingDayTimerRoute) },
+                                    onExit = { navController.popBackStack() }
+                                )
+                            }
+                            composable<TestsRoute> {
+                                TestsScreen(
+                                    onOpenDrawer = { scope.launch { drawerState.open() } },
+                                    onNavigateToSan = { navController.navigate(SanTestRoute) },
+                                    onNavigateToMaslach = { navController.navigate(MaslachTestRoute) },
+                                    onNavigateToMunsterberg = { navController.navigate(MunsterbergTestRoute) }
+                                )
+                            }
+                            composable<MaslachTestRoute> {
+                            MaslachTestScreen(
+                                viewModel = sanViewModel,
+                                    onOpenDrawer = { scope.launch { drawerState.open() } },
+                                    onNavigateToStats = { navController.navigate(StatsRoute) }
+                                )
+                            }
+                            composable<MunsterbergTestRoute> {
+                            MunsterbergTestScreen(
+                                viewModel = sanViewModel,
+                                    onOpenDrawer = { scope.launch { drawerState.open() } },
+                                    onNavigateToStats = { navController.navigate(StatsRoute) }
                                 )
                             }
                             composable<StatsRoute> {
-                                val sanViewModel: SanViewModel = viewModel(factory = sanViewModelFactory)
-                                StatsScreen(
-                                    viewModel = sanViewModel,
+                            StatsScreen(
+                                viewModel = sanViewModel,
+                                    onOpenDrawer = { scope.launch { drawerState.open() } }
+                                )
+                            }
+                            composable<SettingsRoute> {
+                            SettingsScreen(
+                                viewModel = pomodoroViewModel,
+                                loginViewModel = loginViewModel,
+                                    onOpenDrawer = { scope.launch { drawerState.open() } },
+                                    onNavigateToLogin = {
+                                        navController.navigate(LoginRoute) {
+                                            popUpTo(0) { inclusive = true }
+                                        }
+                                    }
+                                )
+                            }
+                            composable<ProfileRoute> {
+                                ProfileScreen(
+                                    viewModel = profileViewModel,
+                                    pomodoroViewModel = pomodoroViewModel,
+                                    onOpenDrawer = { scope.launch { drawerState.open() } },
+                                    onNavigateToStatistics = { navController.navigate(StatsRoute) },
+                                    onNavigateToSan = { navController.navigate(SanTestRoute) },
+                                    onNavigateToWorkingTimer = { navController.navigate(WorkingDayTimerRoute) }
+                                )
+                            }
+                            composable<WorkingDayTimerRoute> {
+                                WorkingDayTimerScreen(
+                                    viewModel = profileViewModel,
+                                    onOpenDrawer = { scope.launch { drawerState.open() } },
+                                    onNavigateToPomodoro = { navController.navigate(PomodoroRoute) }
+                                )
+                            }
+                            composable<ManagerCompanyRoute> {
+                                val managerCompanyViewModel: ManagerCompanyViewModel = viewModel(factory = managerCompanyViewModelFactory)
+                                ManagerCompanyScreen(
+                                    viewModel = managerCompanyViewModel,
                                     onOpenDrawer = { scope.launch { drawerState.open() } }
                                 )
                             }

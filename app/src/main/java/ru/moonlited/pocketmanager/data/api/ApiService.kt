@@ -25,6 +25,9 @@ interface ApiService {
     @GET("/tasks")
     suspend fun getTasks(): List<TaskResponse>
 
+    @GET("/tasks/delegated")
+    suspend fun getDelegatedTasks(): List<TaskResponse>
+
     @POST("/tasks")
     suspend fun createTask(@Body task: TaskCreateRequest): TaskResponse
 
@@ -45,4 +48,56 @@ interface ApiService {
 
     @GET("/san-test")
     suspend fun getSanResults(): List<SanTestResponse>
+
+    @POST("/sync")
+    suspend fun syncData(@Body request: SyncRequest): SyncResponse
+
+    @PUT("/users/fcm-token")
+    suspend fun updateFcmToken(@Body tokenData: FCMTokenUpdate)
+
+    @GET("/departments")
+    suspend fun getDepartments(): List<DepartmentResponse>
+
+    @GET("/users")
+    suspend fun getUsers(): List<UserResponse>
+
+    @POST("/companies")
+    suspend fun createCompany(@Body request: CompanyCreateRequest): CompanyResponse
+
+    @POST("/companies/join")
+    suspend fun joinCompany(@Body request: JoinCompanyRequest)
+
+    @POST("/users/recover")
+    suspend fun recoverAccount(@Body request: UserCreateRequest): TokenResponse
+
+    @DELETE("/users/me")
+    suspend fun deleteAccount()
+
+
+    @GET("/users/me")
+    suspend fun getMe(): UserResponse
+
+    @POST("/users/attendance")
+    suspend fun checkIn(@Body request: AttendanceCreate): AttendanceResponse
+
+    @GET("/users/attendance")
+    suspend fun getAttendance(): List<AttendanceResponse>
+
+    @POST("/maslach-test")
+    suspend fun saveMaslachTest(@Body testData: MaslachCreate): MaslachResponse
+
+    @GET("/maslach-test")
+    suspend fun getMaslachResults(): List<MaslachResponse>
+
+    @POST("/munsterberg-test")
+    suspend fun saveMunsterbergTest(@Body testData: MunsterbergCreate): MunsterbergResponse
+
+    @GET("/munsterberg-test")
+    suspend fun getMunsterbergResults(): List<MunsterbergResponse>
+
+    @POST("/companies/invitations")
+    suspend fun createInvitation(@Body request: InvitationCreate): InvitationResponse
+
+    @DELETE("/companies/invitations/{code}")
+    suspend fun deleteInvitation(@Path("code") code: String)
 }

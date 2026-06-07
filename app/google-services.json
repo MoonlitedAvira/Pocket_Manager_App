@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "667719151035",
+    "project_id": "pocket-manager-22848",
+    "storage_bucket": "pocket-manager-22848.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:667719151035:android:884043a0b316b46091a89e",
+        "android_client_info": {
+          "package_name": "ru.moonlited.pocketmanager"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDEuFUPp3DZ2DG34ucgsMariQ0upUkISYY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

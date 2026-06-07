@@ -111,5 +111,24 @@ fun LoginScreen(
                 style = MaterialTheme.typography.bodyMedium
             )
         }
+
+        if (loginState is LoginState.AccountDeleted) {
+            val deletedState = loginState as LoginState.AccountDeleted
+            AlertDialog(
+                onDismissRequest = { viewModel.resetState() },
+                title = { Text("Аккаунт удален") },
+                text = { Text("Ваш аккаунт помечен как удаленный. Хотите ли вы восстановить аккаунт?") },
+                confirmButton = {
+                    Button(onClick = { viewModel.recoverAccount(deletedState.email, password) }) {
+                        Text("Восстановить")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { viewModel.resetState() }) {
+                        Text("Отмена")
+                    }
+                }
+            )
+        }
     }
 }
