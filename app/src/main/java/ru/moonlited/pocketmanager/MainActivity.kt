@@ -22,6 +22,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -64,6 +65,7 @@ class MainActivity : ComponentActivity() {
         val sanViewModelFactory = SanViewModelFactory(apiService, sessionManager)
         val profileViewModelFactory = ProfileViewModelFactory(apiService, sessionManager)
         val managerCompanyViewModelFactory = ManagerCompanyViewModelFactory(apiService)
+        val companyManagementViewModelFactory = ru.moonlited.pocketmanager.viewmodel.CompanyManagementViewModelFactory(apiService)
 
         val startScreen: Any = if (sessionManager.fetchAuthToken() != null) ProfileRoute else LoginRoute
 
@@ -143,7 +145,7 @@ class MainActivity : ComponentActivity() {
                                 NavigationDrawerItem(
                                     label = { Text("Статистика", fontSize = 14.sp) },
                                     selected = currentRoute?.contains("StatsRoute") == true,
-                                    onClick = { scope.launch { drawerState.close() }; navController.navigate(StatsRoute) },
+                                    onClick = { scope.launch { drawerState.close() }; navController.navigate(StatsRoute()) },
                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
                                 )
                                 Spacer(Modifier.weight(1f))
@@ -262,7 +264,7 @@ class MainActivity : ComponentActivity() {
                                     viewModel = sanViewModel,
                                     fromWorkStart = fromWorkStart,
                                     onOpenDrawer = { scope.launch { drawerState.open() } },
-                                    onNavigateToStats = { navController.navigate(StatsRoute) },
+                                    onNavigateToStats = { navController.navigate(StatsRoute("SAN")) },
                                     onNavigateToTimer = { navController.navigate(WorkingDayTimerRoute) },
                                     onExit = { navController.popBackStack() }
                                 )
@@ -279,20 +281,22 @@ class MainActivity : ComponentActivity() {
                             MaslachTestScreen(
                                 viewModel = sanViewModel,
                                     onOpenDrawer = { scope.launch { drawerState.open() } },
-                                    onNavigateToStats = { navController.navigate(StatsRoute) }
+                                    onNavigateToStats = { navController.navigate(StatsRoute("MASLACH")) }
                                 )
                             }
                             composable<MunsterbergTestRoute> {
                             MunsterbergTestScreen(
                                 viewModel = sanViewModel,
                                     onOpenDrawer = { scope.launch { drawerState.open() } },
-                                    onNavigateToStats = { navController.navigate(StatsRoute) }
+                                    onNavigateToStats = { navController.navigate(StatsRoute("MUNSTERBERG")) }
                                 )
                             }
-                            composable<StatsRoute> {
-                            StatsScreen(
-                                viewModel = sanViewModel,
-                                    onOpenDrawer = { scope.launch { drawerState.open() } }
+                            composable<StatsRoute> { backStackEntry ->
+                                val route = backStackEntry.toRoute<StatsRoute>()
+                                StatsScreen(
+                                    viewModel = sanViewModel,
+                                    onOpenDrawer = { scope.launch { drawerState.open() } },
+                                    initialTest = route.initialTest
                                 )
                             }
                             composable<SettingsRoute> {
@@ -312,7 +316,7 @@ class MainActivity : ComponentActivity() {
                                     viewModel = profileViewModel,
                                     pomodoroViewModel = pomodoroViewModel,
                                     onOpenDrawer = { scope.launch { drawerState.open() } },
-                                    onNavigateToStatistics = { navController.navigate(StatsRoute) },
+                                    onNavigateToStatistics = { navController.navigate(StatsRoute()) },
                                     onNavigateToSan = { navController.navigate(SanTestRoute) },
                                     onNavigateToWorkingTimer = { navController.navigate(WorkingDayTimerRoute) }
                                 )
@@ -326,8 +330,10 @@ class MainActivity : ComponentActivity() {
                             }
                             composable<ManagerCompanyRoute> {
                                 val managerCompanyViewModel: ManagerCompanyViewModel = viewModel(factory = managerCompanyViewModelFactory)
+                                val companyManagementViewModel: ru.moonlited.pocketmanager.viewmodel.CompanyManagementViewModel = viewModel(factory = companyManagementViewModelFactory)
                                 ManagerCompanyScreen(
                                     viewModel = managerCompanyViewModel,
+                                    companyViewModel = companyManagementViewModel,
                                     onOpenDrawer = { scope.launch { drawerState.open() } }
                                 )
                             }

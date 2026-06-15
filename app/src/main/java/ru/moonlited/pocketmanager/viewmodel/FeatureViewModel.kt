@@ -240,12 +240,12 @@ class SanViewModel(private val apiService: ApiService, private val sessionManage
         }
     }
 
-    fun saveMunsterbergTest(correctWords: Int, timeSpentSeconds: Int) {
+    fun saveMunsterbergTest(correctWords: Int, timeSpentSeconds: Int, errors: Int) {
         viewModelScope.launch {
             try {
                 apiService.saveMunsterbergTest(
                     ru.moonlited.pocketmanager.data.api.MunsterbergCreate(
-                        correctWords, timeSpentSeconds
+                        correctWords, timeSpentSeconds, errors
                     )
                 )
                 sessionManager.setTestCompletedToday("munsterberg")

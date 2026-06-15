@@ -110,8 +110,8 @@ fun ProfileScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        StatCard(title = "Отработано", value = "120 ч", modifier = Modifier.weight(1f))
-                        StatCard(title = "Рабочих дней", value = "15 дн", modifier = Modifier.weight(1f))
+                        StatCard(title = "Отработано", value = "0 ч", modifier = Modifier.weight(1f))
+                        StatCard(title = "Рабочих дней", value = "0 дн", modifier = Modifier.weight(1f))
                     }
                 }
 
@@ -132,7 +132,7 @@ fun ProfileScreen(
                                 Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFC107))
                                 Column {
                                     Text("Streak", style = MaterialTheme.typography.labelMedium)
-                                    Text("5 дней", fontWeight = FontWeight.Bold)
+                                    Text("0 дней", fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
@@ -149,7 +149,7 @@ fun ProfileScreen(
                                 Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF4CAF50))
                                 Column {
                                     Text("Пунктуальность", style = MaterialTheme.typography.labelMedium)
-                                    Text("95%", fontWeight = FontWeight.Bold)
+                                    Text("0%", fontWeight = FontWeight.Bold)
                                 }
                             }
                         }

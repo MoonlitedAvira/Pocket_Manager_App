@@ -1,13 +1,20 @@
 // ui/screens/RoleSelectionScreen.kt
 package ru.moonlited.pocketmanager.ui.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import ru.moonlited.pocketmanager.ui.components.QrScannerOverlay
 import ru.moonlited.pocketmanager.viewmodel.LoginState
 import ru.moonlited.pocketmanager.viewmodel.LoginViewModel
 
@@ -18,7 +25,16 @@ fun RoleSelectionScreen(
 ) {
     var showManagerDialog by remember { mutableStateOf(false) }
     var showWorkerDialog by remember { mutableStateOf(false) }
+    var showScanner by remember { mutableStateOf(false) }
     var input by remember { mutableStateOf("") }
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            showScanner = true
+        }
+    }
     
     val loginState by viewModel.loginState.collectAsState()
 
@@ -118,7 +134,12 @@ fun RoleSelectionScreen(
                 OutlinedTextField(
                     value = input,
                     onValueChange = { input = it },
-                    label = { Text("Инвайт код") }
+                    label = { Text("Инвайт код") },
+                    trailingIcon = {
+                        IconButton(onClick = { cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA) }) {
+                            Icon(Icons.Default.QrCodeScanner, contentDescription = "Сканировать QR")
+                        }
+                    }
                 )
             },
             confirmButton = {
@@ -132,5 +153,24 @@ fun RoleSelectionScreen(
                 TextButton(onClick = { showWorkerDialog = false; input = "" }) { Text("Отмена") }
             }
         )
+    }
+    if (showScanner) {
+        Dialog(
+            onDismissRequest = { showScanner = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                QrScannerOverlay { scannedCode ->
+                    input = scannedCode
+                    showScanner = false
+                }
+                IconButton(
+                    onClick = { showScanner = false },
+                    modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)
+                ) {
+                    Text("Закрыть", color = androidx.compose.ui.graphics.Color.White)
+                }
+            }
+        }
     }
 }

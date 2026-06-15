@@ -100,4 +100,22 @@ interface ApiService {
 
     @DELETE("/companies/invitations/{code}")
     suspend fun deleteInvitation(@Path("code") code: String)
+
+    @POST("/departments")
+    suspend fun createDepartment(@Body request: DepartmentCreateRequest): DepartmentResponse
+
+    @POST("/positions")
+    suspend fun createPosition(@Body request: PositionCreateRequest): PositionResponse
+
+    @PUT("/positions/{pos_id}")
+    suspend fun updatePosition(@Path("pos_id") posId: Int, @Body request: PositionUpdateRequest): PositionResponse
+
+    @PUT("/users/{user_id}")
+    suspend fun updateUser(@Path("user_id") userId: Int, @Body request: WorkerUpdateRequest): UserResponse
+
+    @DELETE("/users/{user_id}")
+    suspend fun deleteUserFromCompany(@Path("user_id") userId: Int)
+
+    @GET("/users/{user_id}/stats")
+    suspend fun getUserStats(@Path("user_id") userId: Int): WorkerStatsResponse
 }

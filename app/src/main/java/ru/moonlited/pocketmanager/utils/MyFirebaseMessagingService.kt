@@ -35,10 +35,21 @@ class MyFirebaseMessagingService : FirebaseMessagingService(), KoinComponent {
         val title = remoteMessage.notification?.title ?: "Новое уведомление"
         val body = remoteMessage.notification?.body ?: ""
 
-        // Рассылаем броадкаст для обновления задач
-        val intent = android.content.Intent("ru.moonlited.pocketmanager.TASKS_UPDATED")
-        intent.setPackage(packageName)
-        sendBroadcast(intent)
+        val action = remoteMessage.data["action"]
+
+        if (action == "reset_tests") {
+            val sessionManager = SessionManager(applicationContext)
+            sessionManager.clearLocalTimers()
+            // Optionally notify UI
+            val intent = android.content.Intent("ru.moonlited.pocketmanager.TASKS_UPDATED")
+            intent.setPackage(packageName)
+            sendBroadcast(intent)
+        } else {
+            // Рассылаем броадкаст для обновления задач
+            val intent = android.content.Intent("ru.moonlited.pocketmanager.TASKS_UPDATED")
+            intent.setPackage(packageName)
+            sendBroadcast(intent)
+        }
 
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         val channelId = "fcm_default_channel"

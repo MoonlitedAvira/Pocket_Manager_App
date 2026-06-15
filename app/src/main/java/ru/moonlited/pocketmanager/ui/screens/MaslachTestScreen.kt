@@ -114,6 +114,27 @@ fun MaslachTestScreen(
                 }
             )
         }
+        var showRecommendationDialog by remember { mutableStateOf(false) }
+        var finalEE by remember { mutableFloatStateOf(0f) }
+        var finalDP by remember { mutableFloatStateOf(0f) }
+        var finalPA by remember { mutableFloatStateOf(0f) }
+
+        if (showRecommendationDialog) {
+            AlertDialog(
+                onDismissRequest = { 
+                    showRecommendationDialog = false
+                    viewModel.saveMaslachTest(finalEE, finalDP, finalPA)
+                },
+                title = { Text("Обратите внимание") },
+                text = { Text("У вас высокие показатели эмоционального истощения или деперсонализации. Это признаки профессионального выгорания. Пожалуйста, найдите время для отдыха и переключите внимание с работы на другие сферы жизни.") },
+                confirmButton = {
+                    TextButton(onClick = { 
+                        showRecommendationDialog = false
+                        viewModel.saveMaslachTest(finalEE, finalDP, finalPA)
+                    }) { Text("Понятно, сохранить результат") }
+                }
+            )
+        }
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -194,7 +215,14 @@ fun MaslachTestScreen(
                                 "PA" -> pa += score
                             }
                         }
-                        viewModel.saveMaslachTest(ee, dp, pa)
+                        if (ee > 24f || dp > 8f) {
+                            finalEE = ee
+                            finalDP = dp
+                            finalPA = pa
+                            showRecommendationDialog = true
+                        } else {
+                            viewModel.saveMaslachTest(ee, dp, pa)
+                        }
                     },
                     modifier = Modifier.fillMaxWidth().height(50.dp)
                 ) {

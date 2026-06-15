@@ -19,7 +19,7 @@ object PomodoroRoute
 object SanTestRoute
 
 @Serializable
-object StatsRoute
+data class StatsRoute(val initialTest: String? = null)
 
 @Serializable
 object TestsRoute

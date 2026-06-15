@@ -15,6 +15,7 @@ class TaskViewModelTest {
         val tasks = listOf(
             TaskEntity(
                 localId = 1,
+                userId = 1,
                 title = "Test 1",
                 description = null,
                 createdAt = "2024-06-03T10:00:00",
@@ -23,6 +24,7 @@ class TaskViewModelTest {
             ),
             TaskEntity(
                 localId = 2,
+                userId = 1,
                 title = "Test 2",
                 description = null,
                 createdAt = "2024-06-01T10:00:00",

@@ -80,6 +80,25 @@ fun SanTestScreen(
                 }
             )
         }
+        var showRecommendationDialog by remember { mutableStateOf(false) }
+
+        if (showRecommendationDialog) {
+            AlertDialog(
+                onDismissRequest = { 
+                    showRecommendationDialog = false
+                    viewModel.saveResults(scoreS, scoreA, scoreN)
+                },
+                title = { Text("Обратите внимание") },
+                text = { Text("Ваши показатели ниже нормы (меньше 4). Рекомендуем сделать небольшой перерыв, выйти на свежий воздух или выпить воды. Забота о себе — приоритет.") },
+                confirmButton = {
+                    TextButton(onClick = { 
+                        showRecommendationDialog = false
+                        viewModel.saveResults(scoreS, scoreA, scoreN)
+                    }) { Text("Понятно, сохранить результат") }
+                }
+            )
+        }
+
         Column(
             modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -105,7 +124,13 @@ fun SanTestScreen(
                 Spacer(modifier = Modifier.weight(1f))
 
                 Button(
-                    onClick = { viewModel.saveResults(scoreS, scoreA, scoreN) },
+                    onClick = { 
+                        if (scoreS < 4f || scoreA < 4f || scoreN < 4f) {
+                            showRecommendationDialog = true
+                        } else {
+                            viewModel.saveResults(scoreS, scoreA, scoreN) 
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth().height(50.dp)
                 ) {
                     Text("Сохранить результаты", style = MaterialTheme.typography.titleMedium)

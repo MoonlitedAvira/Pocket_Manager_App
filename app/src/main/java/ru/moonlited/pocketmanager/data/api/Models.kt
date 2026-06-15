@@ -108,10 +108,53 @@ data class FCMTokenUpdate(
 )
 
 @Serializable
+data class PositionResponse(
+    val id: Int,
+    val name: String,
+    @SerialName("department_id") val departmentId: Int,
+    @SerialName("hierarchy_level") val hierarchyLevel: Int
+)
+
+@Serializable
+data class PositionCreateRequest(
+    val name: String,
+    @SerialName("department_id") val departmentId: Int,
+    @SerialName("hierarchy_level") val hierarchyLevel: Int = 0
+)
+
+@Serializable
+data class PositionUpdateRequest(
+    val name: String? = null,
+    @SerialName("hierarchy_level") val hierarchyLevel: Int? = null
+)
+
+@Serializable
+data class DepartmentCreateRequest(
+    val name: String,
+    @SerialName("company_id") val companyId: Int
+)
+
+@Serializable
 data class DepartmentResponse(
     val id: Int,
     val name: String,
-    @SerialName("company_id") val companyId: Int
+    @SerialName("company_id") val companyId: Int,
+    val positions: List<PositionResponse> = emptyList()
+)
+
+@Serializable
+data class WorkerUpdateRequest(
+    @SerialName("department_id") val departmentId: Int? = null,
+    @SerialName("position_id") val positionId: Int? = null,
+    val role: String? = null
+)
+
+@Serializable
+data class WorkerStatsResponse(
+    @SerialName("user_id") val userId: Int,
+    @SerialName("san_results") val sanResults: List<SanTestResponse> = emptyList(),
+    @SerialName("maslach_results") val maslachResults: List<MaslachResponse> = emptyList(),
+    @SerialName("munsterberg_results") val munsterbergResults: List<MunsterbergResponse> = emptyList()
 )
 
 @Serializable
@@ -150,7 +193,8 @@ data class MaslachResponse(
 @Serializable
 data class MunsterbergCreate(
     @SerialName("correct_words") val correctWords: Int,
-    @SerialName("time_spent_seconds") val timeSpentSeconds: Int
+    @SerialName("time_spent_seconds") val timeSpentSeconds: Int,
+    val errors: Int = 0
 )
 
 @Serializable
@@ -158,7 +202,8 @@ data class MunsterbergResponse(
     val id: Int,
     val date: String,
     @SerialName("correct_words") val correctWords: Int,
-    @SerialName("time_spent_seconds") val timeSpentSeconds: Int
+    @SerialName("time_spent_seconds") val timeSpentSeconds: Int,
+    val errors: Int = 0
 )
 
 @Serializable

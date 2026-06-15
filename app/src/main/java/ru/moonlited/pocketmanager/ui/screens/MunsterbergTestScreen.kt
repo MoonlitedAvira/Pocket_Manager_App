@@ -38,6 +38,10 @@ fun MunsterbergTestScreen(
 ) {
     val isSaved by viewModel.isSaved.collectAsState()
 
+    LaunchedEffect(Unit) {
+        viewModel.resetState()
+    }
+
     LaunchedEffect(isSaved) {
         if (isSaved) {
             viewModel.resetState()
@@ -53,9 +57,7 @@ fun MunsterbergTestScreen(
     var wrongWords by remember { mutableStateOf(setOf<String>()) }
     var inputText by remember { mutableStateOf("") }
 
-    val testData = remember(testActive) {
-        if (testActive) generateTestData() else Pair("", emptyList())
-    }
+    var testData by remember { mutableStateOf(Pair("", emptyList<String>())) }
     val gridText = testData.first
     val currentWords = testData.second
 
@@ -105,6 +107,25 @@ fun MunsterbergTestScreen(
             )
         }
         
+        var showRecommendationDialog by remember { mutableStateOf(false) }
+        
+        if (showRecommendationDialog) {
+            AlertDialog(
+                onDismissRequest = { 
+                    showRecommendationDialog = false
+                    viewModel.saveMunsterbergTest(foundWords.size, 120 - timeLeft, wrongWords.size)
+                },
+                title = { Text("Обратите внимание") },
+                text = { Text("Ваша результативность оказалась ниже 40%. Похоже, ваше внимание снижено из-за усталости. Рекомендуем сделать паузу и переключить вид деятельности.") },
+                confirmButton = {
+                    TextButton(onClick = { 
+                        showRecommendationDialog = false
+                        viewModel.saveMunsterbergTest(foundWords.size, 120 - timeLeft, wrongWords.size)
+                    }) { Text("Понятно, сохранить результат") }
+                }
+            )
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -116,10 +137,13 @@ fun MunsterbergTestScreen(
         ) {
             if (!testActive && !testCompleted && timeLeft == 120) {
                 Text(
-                    "Вам будет предложен текст из случайных букв, среди которых скрыты слова. Найдите их и впишите. У вас есть 2 минуты.",
+                    "Вам будет предложен текст из случайных букв, среди которых скрыты слова. Найдите их и впишите. У вас есть 2 минуты.\nПодсказка: все слова состоят минимум из 4 букв.",
                     textAlign = TextAlign.Center
                 )
-                Button(onClick = { testActive = true }) {
+                Button(onClick = { 
+                    testData = generateTestData()
+                    testActive = true 
+                }) {
                     Text("Начать тест")
                 }
             } else if (testActive) {
@@ -153,6 +177,10 @@ fun MunsterbergTestScreen(
                             if (word.isNotEmpty()) {
                                 if (currentWords.contains(word) && !foundWords.contains(word)) {
                                     foundWords = foundWords + word
+                                    if (foundWords.size == currentWords.size) {
+                                        testActive = false
+                                        testCompleted = true
+                                    }
                                 } else if (!currentWords.contains(word)) {
                                     wrongWords = wrongWords + word
                                 }
@@ -201,7 +229,14 @@ fun MunsterbergTestScreen(
 
                 Button(
                     onClick = {
-                        viewModel.saveMunsterbergTest(foundWords.size, 120 - timeLeft)
+                        val timeSpent = 120 - timeLeft
+                        val timeFactor = kotlin.math.sqrt(kotlin.math.max(1f, 120f - timeSpent) / 120f)
+                        val efficiency = if (currentWords.isEmpty()) 0f else timeFactor * (foundWords.size.toFloat() / 5f) / (wrongWords.size + 1)
+                        if (efficiency < 0.4f) {
+                            showRecommendationDialog = true
+                        } else {
+                            viewModel.saveMunsterbergTest(foundWords.size, timeSpent, wrongWords.size)
+                        }
                     },
                     modifier = Modifier.fillMaxWidth().height(50.dp)
                 ) {

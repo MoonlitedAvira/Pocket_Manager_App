@@ -7,21 +7,31 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ru.moonlited.pocketmanager.viewmodel.ManagerCompanyViewModel
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.graphics.asImageBitmap
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ManagerCompanyScreen(
     viewModel: ManagerCompanyViewModel,
+    companyViewModel: ru.moonlited.pocketmanager.viewmodel.CompanyManagementViewModel,
     onOpenDrawer: () -> Unit
 ) {
     val invitations by viewModel.invitations.collectAsState()
+
+    LaunchedEffect(Unit) {
+        companyViewModel.loadData()
+    }
+
+    var selectedTabIndex by remember { mutableStateOf(0) }
+    val tabs = listOf("Работники", "Структура", "Инвайты")
 
     var departmentIdInput by remember { mutableStateOf("") }
     var positionIdInput by remember { mutableStateOf("") }
@@ -40,10 +50,25 @@ fun ManagerCompanyScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text("Сгенерировать приглашение", style = MaterialTheme.typography.titleLarge)
+            TabRow(selectedTabIndex = selectedTabIndex) {
+                tabs.forEachIndexed { index, title ->
+                    Tab(
+                        selected = selectedTabIndex == index,
+                        onClick = { selectedTabIndex = index },
+                        text = { Text(title) }
+                    )
+                }
+            }
+
+            when (selectedTabIndex) {
+                0 -> WorkerManagementTab(companyViewModel)
+                1 -> DepartmentsTab(companyViewModel)
+                2 -> Column(
+                    modifier = Modifier.fillMaxSize().padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text("Сгенерировать приглашение", style = MaterialTheme.typography.titleLarge)
             
             OutlinedTextField(
                 value = departmentIdInput,
@@ -80,23 +105,49 @@ fun ManagerCompanyScreen(
             
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(invitations) { invite ->
-                    var showMenu by remember { mutableStateOf(false) }
+                    var showDialog by remember { mutableStateOf(false) }
                     val context = androidx.compose.ui.platform.LocalContext.current
 
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .combinedClickable(
-                                onClick = {
+                    if (showDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showDialog = false },
+                            title = { Text("Код приглашения") },
+                            text = {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                                    val qrBitmap = remember(invite.code) { ru.moonlited.pocketmanager.utils.generateQrCode(invite.code, 600) }
+                                    if (qrBitmap != null) {
+                                        androidx.compose.foundation.Image(
+                                            bitmap = qrBitmap.asImageBitmap(),
+                                            contentDescription = "QR Code",
+                                            modifier = Modifier.size(200.dp)
+                                        )
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                    }
+                                    Text(invite.code, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                                }
+                            },
+                            confirmButton = {
+                                TextButton(onClick = {
                                     val clipboardManager = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                                     val clipData = android.content.ClipData.newPlainText("text", invite.code)
                                     clipboardManager.setPrimaryClip(clipData)
                                     android.widget.Toast.makeText(context, "Код скопирован", android.widget.Toast.LENGTH_SHORT).show()
-                                },
-                                onLongClick = {
-                                    showMenu = true
-                                }
-                            )
+                                    showDialog = false
+                                }) { Text("Скопировать") }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = {
+                                    showDialog = false
+                                    viewModel.deleteInvite(invite.code)
+                                }) { Text("Удалить", color = MaterialTheme.colorScheme.error) }
+                            }
+                        )
+                    }
+
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showDialog = true }
                     ) {
                         Box {
                             Column(modifier = Modifier.padding(16.dp)) {
@@ -108,18 +159,8 @@ fun ManagerCompanyScreen(
                                     Text("Должность ID: ${invite.positionId}")
                                 }
                             }
-                            DropdownMenu(
-                                expanded = showMenu,
-                                onDismissRequest = { showMenu = false }
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text("Удалить", color = MaterialTheme.colorScheme.error) },
-                                    onClick = {
-                                        showMenu = false
-                                        viewModel.deleteInvite(invite.code)
-                                    }
-                                )
-                            }
+                        }
+                    }
                         }
                     }
                 }
