@@ -99,6 +99,16 @@ class SessionManager(context: Context) {
         return sharedPreferences.getString("last_sync_time", null)
     }
 
+    var lastSyncAt: String?
+        get() = getLastSyncTime()
+        set(value) {
+            if (value != null) {
+                saveLastSyncTime(value)
+            } else {
+                sharedPreferences.edit { remove("last_sync_time") }
+            }
+        }
+
     fun savePomodoroEndTime(timeInMillis: Long) {
         sharedPreferences.edit(commit = true) { putLong("pomodoro_end_time", timeInMillis) }
     }

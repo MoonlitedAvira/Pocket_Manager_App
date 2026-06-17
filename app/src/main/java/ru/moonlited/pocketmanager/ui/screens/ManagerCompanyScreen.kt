@@ -11,6 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import ru.moonlited.pocketmanager.viewmodel.ManagerCompanyViewModel
 
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -56,7 +57,14 @@ fun ManagerCompanyScreen(
                     Tab(
                         selected = selectedTabIndex == index,
                         onClick = { selectedTabIndex = index },
-                        text = { Text(title) }
+                        text = { 
+                            Text(
+                                text = title,
+                                fontSize = 12.sp,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                            )
+                        }
                     )
                 }
             }
@@ -70,27 +78,95 @@ fun ManagerCompanyScreen(
                 ) {
                     Text("Сгенерировать приглашение", style = MaterialTheme.typography.titleLarge)
             
-            OutlinedTextField(
-                value = departmentIdInput,
-                onValueChange = { departmentIdInput = it },
-                label = { Text("ID Отдела (опционально)") },
-                modifier = Modifier.fillMaxWidth()
-            )
+            var inviteDeptExpanded by remember { mutableStateOf(false) }
+            var invitePosExpanded by remember { mutableStateOf(false) }
+            var selectedDeptId by remember { mutableStateOf<Int?>(null) }
+            var selectedPosId by remember { mutableStateOf<Int?>(null) }
+            val departments by companyViewModel.departments.collectAsState()
+
+            ExposedDropdownMenuBox(
+                expanded = inviteDeptExpanded,
+                onExpandedChange = { inviteDeptExpanded = it }
+            ) {
+                val currentDeptName = if (selectedDeptId == null) "Без отдела" else departments.find { it.id == selectedDeptId }?.name ?: "Неизвестный отдел"
+                OutlinedTextField(
+                    value = currentDeptName,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Отдел") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = inviteDeptExpanded) },
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                    modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable, true)
+                )
+                ExposedDropdownMenu(
+                    expanded = inviteDeptExpanded,
+                    onDismissRequest = { inviteDeptExpanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Без отдела") },
+                        onClick = {
+                            selectedDeptId = null
+                            selectedPosId = null
+                            inviteDeptExpanded = false
+                        }
+                    )
+                    departments.forEach { dept ->
+                        DropdownMenuItem(
+                            text = { Text(dept.name) },
+                            onClick = {
+                                selectedDeptId = dept.id
+                                selectedPosId = null
+                                inviteDeptExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
             
-            OutlinedTextField(
-                value = positionIdInput,
-                onValueChange = { positionIdInput = it },
-                label = { Text("ID Должности (опционально)") },
-                modifier = Modifier.fillMaxWidth()
-            )
+            val currentDept = departments.find { it.id == selectedDeptId }
+            ExposedDropdownMenuBox(
+                expanded = invitePosExpanded,
+                onExpandedChange = { invitePosExpanded = it }
+            ) {
+                val currentPosName = if (selectedPosId == null) "Без должности" else currentDept?.positions?.find { it.id == selectedPosId }?.name ?: "Неизвестная должность"
+                OutlinedTextField(
+                    value = currentPosName,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Должность") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = invitePosExpanded) },
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                    modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable, true),
+                    enabled = currentDept?.positions?.isNotEmpty() == true
+                )
+                ExposedDropdownMenu(
+                    expanded = invitePosExpanded,
+                    onDismissRequest = { invitePosExpanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Без должности") },
+                        onClick = {
+                            selectedPosId = null
+                            invitePosExpanded = false
+                        }
+                    )
+                    currentDept?.positions?.forEach { pos ->
+                        DropdownMenuItem(
+                            text = { Text(pos.name) },
+                            onClick = {
+                                selectedPosId = pos.id
+                                invitePosExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
 
             Button(
                 onClick = {
-                    val deptId = departmentIdInput.toIntOrNull()
-                    val posId = positionIdInput.toIntOrNull()
-                    viewModel.generateInvite(deptId, posId)
-                    departmentIdInput = ""
-                    positionIdInput = ""
+                    viewModel.generateInvite(selectedDeptId, selectedPosId)
+                    selectedDeptId = null
+                    selectedPosId = null
                 },
                 modifier = Modifier.fillMaxWidth().height(50.dp)
             ) {
@@ -153,10 +229,13 @@ fun ManagerCompanyScreen(
                             Column(modifier = Modifier.padding(16.dp)) {
                                 Text("Код: ${invite.code}", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
                                 if (invite.departmentId != null) {
-                                    Text("Отдел ID: ${invite.departmentId}")
+                                    val deptName = departments.find { it.id == invite.departmentId }?.name ?: "Неизвестно"
+                                    Text("Отдел: $deptName")
                                 }
                                 if (invite.positionId != null) {
-                                    Text("Должность ID: ${invite.positionId}")
+                                    val dept = departments.find { it.id == invite.departmentId }
+                                    val posName = dept?.positions?.find { it.id == invite.positionId }?.name ?: "Неизвестно"
+                                    Text("Должность: $posName")
                                 }
                             }
                         }

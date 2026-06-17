@@ -29,27 +29,42 @@ class MyFirebaseMessagingService : FirebaseMessagingService(), KoinComponent {
         }
     }
 
+    private val syncRepository: ru.moonlited.pocketmanager.data.repository.SyncRepository by inject()
+
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
         super.onMessageReceived(remoteMessage)
-
-        val title = remoteMessage.notification?.title ?: "Новое уведомление"
-        val body = remoteMessage.notification?.body ?: ""
 
         val action = remoteMessage.data["action"]
 
         if (action == "reset_tests") {
             val sessionManager = SessionManager(applicationContext)
             sessionManager.clearLocalTimers()
-            // Optionally notify UI
+            
+            // Запускаем полную синхронизацию, так как тесты могли обновиться
+            CoroutineScope(Dispatchers.IO).launch {
+                syncRepository.syncAll()
+            }
+            
             val intent = android.content.Intent("ru.moonlited.pocketmanager.TASKS_UPDATED")
             intent.setPackage(packageName)
             sendBroadcast(intent)
         } else {
             // Рассылаем броадкаст для обновления задач
+            CoroutineScope(Dispatchers.IO).launch {
+                syncRepository.syncAll()
+            }
             val intent = android.content.Intent("ru.moonlited.pocketmanager.TASKS_UPDATED")
             intent.setPackage(packageName)
             sendBroadcast(intent)
         }
+
+        // Если это silent-push с data payload и без блока notification - не показываем системное уведомление
+        if (remoteMessage.notification == null) {
+            return
+        }
+
+        val title = remoteMessage.notification?.title ?: "Новое уведомление"
+        val body = remoteMessage.notification?.body ?: ""
 
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         val channelId = "fcm_default_channel"

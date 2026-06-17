@@ -22,12 +22,17 @@ val appModule = module {
     }
 
     single { get<AppDatabase>().taskDao() }
+    single { get<AppDatabase>().attendanceDao() }
+    single { get<AppDatabase>().sanDao() }
+    single { get<AppDatabase>().maslachDao() }
+    single { get<AppDatabase>().munsterbergDao() }
 
     single { SessionManager(androidContext()) }
 
     single { ApiClient.create(sessionManager = get()) }
 
     single { TaskRepository(taskDao = get(), apiService = get(), sessionManager = get()) }
+    single { ru.moonlited.pocketmanager.data.repository.SyncRepository(db = get(), apiService = get(), sessionManager = get()) }
 
     viewModel { TaskViewModel(taskRepository = get(), sessionManager = get()) }
 }

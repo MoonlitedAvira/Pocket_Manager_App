@@ -95,6 +95,9 @@ interface ApiService {
     @GET("/munsterberg-test")
     suspend fun getMunsterbergResults(): List<MunsterbergResponse>
 
+    @GET("/companies/invitations")
+    suspend fun getInvitations(): List<InvitationResponse>
+
     @POST("/companies/invitations")
     suspend fun createInvitation(@Body request: InvitationCreate): InvitationResponse
 

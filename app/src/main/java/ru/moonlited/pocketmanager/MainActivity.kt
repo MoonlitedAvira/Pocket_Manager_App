@@ -59,10 +59,12 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val loginViewModelFactory = LoginViewModelFactory(apiService, sessionManager)
-        val pomodoroViewModelFactory = PomodoroViewModelFactory(applicationContext, apiService, sessionManager)
+        val syncRepository: ru.moonlited.pocketmanager.data.repository.SyncRepository by inject()
 
-        val sanViewModelFactory = SanViewModelFactory(apiService, sessionManager)
+        val loginViewModelFactory = LoginViewModelFactory(apiService, sessionManager)
+        val pomodoroViewModelFactory = PomodoroViewModelFactory(applicationContext, appDatabase, syncRepository, sessionManager)
+
+        val sanViewModelFactory = SanViewModelFactory(appDatabase, syncRepository, sessionManager)
         val profileViewModelFactory = ProfileViewModelFactory(apiService, sessionManager)
         val managerCompanyViewModelFactory = ManagerCompanyViewModelFactory(apiService)
         val companyManagementViewModelFactory = ru.moonlited.pocketmanager.viewmodel.CompanyManagementViewModelFactory(apiService)
@@ -92,6 +94,11 @@ class MainActivity : ComponentActivity() {
                             if (ContextCompat.checkSelfPermission(this@MainActivity, permission) != PackageManager.PERMISSION_GRANTED) {
                                 launcher.launch(permission)
                             }
+                        }
+                        
+                        // Run sync in background on start
+                        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                            syncRepository.syncAll()
                         }
                     }
 

@@ -152,15 +152,23 @@ fun MunsterbergTestScreen(
                 Card(
                     modifier = Modifier.wrapContentWidth()
                 ) {
-                    Text(
-                        text = gridText,
+                    Column(
                         modifier = Modifier.padding(16.dp),
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 12.sp,
-                        letterSpacing = 0.sp,
-                        lineHeight = 16.sp,
-                        textAlign = TextAlign.Center
-                    )
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        gridText.split("\n").forEach { line ->
+                            Row(horizontalArrangement = Arrangement.Center) {
+                                line.forEach { char ->
+                                    Text(
+                                        text = char.toString(),
+                                        fontSize = 14.sp,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.width(18.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
 
                 OutlinedTextField(

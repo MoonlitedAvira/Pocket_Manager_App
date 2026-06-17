@@ -74,7 +74,9 @@ data class SanTestResponse(
     val date: String,
     @SerialName("score_s") val scoreS: Float,
     @SerialName("score_a") val scoreA: Float,
-    @SerialName("score_n") val scoreN: Float
+    @SerialName("score_n") val scoreN: Float,
+    @SerialName("updated_at") val updatedAt: String,
+    @SerialName("is_deleted") val isDeleted: Boolean
 )
 @Serializable
 data class SyncTaskDto(
@@ -91,15 +93,65 @@ data class SyncTaskDto(
 )
 
 @Serializable
+data class SyncAttendanceDto(
+    val id: Int? = null,
+    val date: String,
+    @SerialName("action_type") val actionType: String,
+    @SerialName("updated_at") val updatedAt: String,
+    @SerialName("is_deleted") val isDeleted: Boolean
+)
+
+@Serializable
+data class SyncSanDto(
+    val id: Int? = null,
+    val date: String,
+    @SerialName("score_s") val scoreS: Float,
+    @SerialName("score_a") val scoreA: Float,
+    @SerialName("score_n") val scoreN: Float,
+    @SerialName("updated_at") val updatedAt: String,
+    @SerialName("is_deleted") val isDeleted: Boolean
+)
+
+@Serializable
+data class SyncMaslachDto(
+    val id: Int? = null,
+    val date: String,
+    @SerialName("emotional_exhaustion") val emotionalExhaustion: Float,
+    val depersonalization: Float,
+    @SerialName("personal_accomplishment") val personalAccomplishment: Float,
+    @SerialName("updated_at") val updatedAt: String,
+    @SerialName("is_deleted") val isDeleted: Boolean
+)
+
+@Serializable
+data class SyncMunsterbergDto(
+    val id: Int? = null,
+    val date: String,
+    @SerialName("correct_words") val correctWords: Int,
+    @SerialName("time_spent_seconds") val timeSpentSeconds: Int,
+    val errors: Int,
+    @SerialName("updated_at") val updatedAt: String,
+    @SerialName("is_deleted") val isDeleted: Boolean
+)
+
+@Serializable
 data class SyncRequest(
-    val tasks: List<SyncTaskDto>,
+    val tasks: List<SyncTaskDto> = emptyList(),
+    val attendances: List<SyncAttendanceDto> = emptyList(),
+    @SerialName("san_results") val sanResults: List<SyncSanDto> = emptyList(),
+    @SerialName("maslach_results") val maslachResults: List<SyncMaslachDto> = emptyList(),
+    @SerialName("munsterberg_results") val munsterbergResults: List<SyncMunsterbergDto> = emptyList(),
     @SerialName("last_sync_at") val lastSyncAt: String? = null
 )
 
 @Serializable
 data class SyncResponse(
     @SerialName("current_sync_at") val currentSyncAt: String,
-    val tasks: List<TaskResponse>
+    val tasks: List<TaskResponse> = emptyList(),
+    val attendances: List<AttendanceResponse> = emptyList(),
+    @SerialName("san_results") val sanResults: List<SanTestResponse> = emptyList(),
+    @SerialName("maslach_results") val maslachResults: List<MaslachResponse> = emptyList(),
+    @SerialName("munsterberg_results") val munsterbergResults: List<MunsterbergResponse> = emptyList()
 )
 
 @Serializable
@@ -187,7 +239,9 @@ data class MaslachResponse(
     val date: String,
     @SerialName("emotional_exhaustion") val emotionalExhaustion: Float,
     val depersonalization: Float,
-    @SerialName("personal_accomplishment") val personalAccomplishment: Float
+    @SerialName("personal_accomplishment") val personalAccomplishment: Float,
+    @SerialName("updated_at") val updatedAt: String,
+    @SerialName("is_deleted") val isDeleted: Boolean
 )
 
 @Serializable
@@ -203,7 +257,9 @@ data class MunsterbergResponse(
     val date: String,
     @SerialName("correct_words") val correctWords: Int,
     @SerialName("time_spent_seconds") val timeSpentSeconds: Int,
-    val errors: Int = 0
+    val errors: Int = 0,
+    @SerialName("updated_at") val updatedAt: String,
+    @SerialName("is_deleted") val isDeleted: Boolean
 )
 
 @Serializable
@@ -232,5 +288,7 @@ data class AttendanceResponse(
     val id: Int,
     @SerialName("user_id") val userId: Int,
     val date: String,
-    @SerialName("action_type") val actionType: String
+    @SerialName("action_type") val actionType: String,
+    @SerialName("updated_at") val updatedAt: String,
+    @SerialName("is_deleted") val isDeleted: Boolean
 )

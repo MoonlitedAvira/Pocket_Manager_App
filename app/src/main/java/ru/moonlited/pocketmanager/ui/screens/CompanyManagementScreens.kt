@@ -1,5 +1,6 @@
 package ru.moonlited.pocketmanager.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import ru.moonlited.pocketmanager.data.api.DepartmentResponse
 import ru.moonlited.pocketmanager.data.api.PositionResponse
 import ru.moonlited.pocketmanager.data.api.UserResponse
@@ -100,7 +102,7 @@ fun DepartmentCard(dept: DepartmentResponse, viewModel: CompanyManagementViewMod
                     OutlinedTextField(
                         value = newPosName,
                         onValueChange = { newPosName = it },
-                        label = { Text("Новая должность") },
+                        label = { Text("Новая должность", fontSize = 12.sp, maxLines = 1) },
                         modifier = Modifier.weight(1f)
                     )
                     Spacer(Modifier.width(8.dp))
@@ -110,7 +112,7 @@ fun DepartmentCard(dept: DepartmentResponse, viewModel: CompanyManagementViewMod
                             newPosName = ""
                         }
                     }) {
-                        Text("Добавить")
+                        Text("Добавить", fontSize = 12.sp, maxLines = 1)
                     }
                 }
             }
@@ -118,23 +120,75 @@ fun DepartmentCard(dept: DepartmentResponse, viewModel: CompanyManagementViewMod
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WorkerManagementTab(viewModel: CompanyManagementViewModel) {
     val users by viewModel.users.collectAsState()
     val departments by viewModel.departments.collectAsState()
 
-    LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        item {
-            Text("Сотрудники", style = MaterialTheme.typography.titleLarge)
-            Spacer(Modifier.height(16.dp))
+    var selectedFilterDeptId by remember { mutableStateOf<Int?>(-1) } // -1 = Все
+    var expanded by remember { mutableStateOf(false) }
+
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        Text("Сотрудники", style = MaterialTheme.typography.titleLarge)
+        Spacer(Modifier.height(8.dp))
+
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = it }
+        ) {
+            val filterName = when (selectedFilterDeptId) {
+                -1 -> "Все"
+                null -> "Без отдела"
+                else -> departments.find { it.id == selectedFilterDeptId }?.name ?: "Неизвестный отдел"
+            }
+            OutlinedTextField(
+                value = filterName,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Фильтр по отделу") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable, true)
+            )
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text("Все") },
+                    onClick = { selectedFilterDeptId = -1; expanded = false }
+                )
+                DropdownMenuItem(
+                    text = { Text("Без отдела") },
+                    onClick = { selectedFilterDeptId = null; expanded = false }
+                )
+                departments.forEach { dept ->
+                    DropdownMenuItem(
+                        text = { Text(dept.name) },
+                        onClick = { selectedFilterDeptId = dept.id; expanded = false }
+                    )
+                }
+            }
         }
-        items(users) { user ->
-            WorkerCard(user, departments, viewModel)
-            Spacer(Modifier.height(8.dp))
+        
+        Spacer(Modifier.height(16.dp))
+
+        val filteredUsers = users.filter { 
+            if (selectedFilterDeptId == -1) true 
+            else it.departmentId == selectedFilterDeptId 
+        }
+
+        LazyColumn(modifier = Modifier.weight(1f)) {
+            items(filteredUsers) { user ->
+                WorkerCard(user, departments, viewModel)
+                Spacer(Modifier.height(8.dp))
+            }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WorkerCard(user: UserResponse, departments: List<DepartmentResponse>, viewModel: CompanyManagementViewModel) {
     var expanded by remember { mutableStateOf(false) }
@@ -142,77 +196,171 @@ fun WorkerCard(user: UserResponse, departments: List<DepartmentResponse>, viewMo
     var selectedPosId by remember(user.positionId) { mutableStateOf(user.positionId) }
     var selectedRole by remember(user.role) { mutableStateOf(user.role) }
     
+    var deptExpanded by remember { mutableStateOf(false) }
+    var posExpanded by remember { mutableStateOf(false) }
+    var roleExpanded by remember { mutableStateOf(false) }
+    
     var showStats by remember { mutableStateOf(false) }
 
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(user.email, fontWeight = FontWeight.Bold)
-            Text("Роль: ${user.role}")
+            Text(user.email, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            
+            val displayRole = when(user.role) {
+                "worker" -> "Сотрудник"
+                "manager" -> "Менеджер"
+                "director" -> "Директор"
+                else -> user.role
+            }
+            Text("Роль: $displayRole", style = MaterialTheme.typography.bodyLarge)
             
             val deptName = departments.find { it.id == user.departmentId }?.name ?: "Не назначен"
-            Text("Отдел: $deptName")
+            Text("Отдел: $deptName", style = MaterialTheme.typography.bodyLarge)
             
             val posName = departments.find { it.id == user.departmentId }?.positions?.find { it.id == user.positionId }?.name ?: "Нет должности"
-            Text("Должность: $posName")
+            Text("Должность: $posName", style = MaterialTheme.typography.bodyLarge)
             
             Spacer(Modifier.height(8.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                TextButton(onClick = { expanded = !expanded }) {
-                    Text(if (expanded) "Скрыть настройки" else "Настроить")
+                TextButton(
+                    onClick = { expanded = !expanded },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(if (expanded) "Скрыть" else "Настроить", fontSize = 12.sp, maxLines = 1)
                 }
-                TextButton(onClick = { 
-                    viewModel.loadWorkerStats(user.id)
-                    showStats = true 
-                }) {
-                    Text("Статистика")
+                Spacer(Modifier.width(4.dp))
+                TextButton(
+                    onClick = { 
+                        viewModel.loadWorkerStats(user.id)
+                        showStats = true 
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Статистика", fontSize = 12.sp, maxLines = 1)
                 }
             }
 
             if (expanded) {
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 
-                // Department Selection (Simple buttons for now to avoid dropdown complexities if desired, but let's use a simple list of buttons)
-                Text("Выбрать отдел:")
-                departments.forEach { dept ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(selected = selectedDeptId == dept.id, onClick = { 
-                            selectedDeptId = dept.id
-                            selectedPosId = null // Reset position when changing department
-                        })
-                        Text(dept.name)
-                    }
-                }
-                
-                val currentDept = departments.find { it.id == selectedDeptId }
-                if (currentDept != null && currentDept.positions.isNotEmpty()) {
-                    Text("Выбрать должность:")
-                    currentDept.positions.forEach { pos ->
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            RadioButton(selected = selectedPosId == pos.id, onClick = { selectedPosId = pos.id })
-                            Text(pos.name)
+                Spacer(Modifier.height(8.dp))
+                ExposedDropdownMenuBox(
+                    expanded = deptExpanded,
+                    onExpandedChange = { deptExpanded = it }
+                ) {
+                    val currentDeptName = departments.find { it.id == selectedDeptId }?.name ?: "Выберите отдел"
+                    OutlinedTextField(
+                        value = currentDeptName,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Отдел") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = deptExpanded) },
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                        modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable, true)
+                    )
+                    ExposedDropdownMenu(
+                        expanded = deptExpanded,
+                        onDismissRequest = { deptExpanded = false }
+                    ) {
+                        departments.forEach { dept ->
+                            DropdownMenuItem(
+                                text = { Text(dept.name) },
+                                onClick = {
+                                    selectedDeptId = dept.id
+                                    selectedPosId = null
+                                    deptExpanded = false
+                                }
+                            )
                         }
                     }
                 }
                 
-                Text("Права доступа (Роль):")
-                listOf("worker", "manager", "director").forEach { role ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(selected = selectedRole == role, onClick = { selectedRole = role })
-                        Text(role)
+                Spacer(Modifier.height(8.dp))
+                val currentDept = departments.find { it.id == selectedDeptId }
+                ExposedDropdownMenuBox(
+                    expanded = posExpanded,
+                    onExpandedChange = { posExpanded = it }
+                ) {
+                    val currentPosName = currentDept?.positions?.find { it.id == selectedPosId }?.name ?: "Выберите должность"
+                    OutlinedTextField(
+                        value = currentPosName,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Должность") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = posExpanded) },
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                        modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable, true),
+                        enabled = currentDept?.positions?.isNotEmpty() == true
+                    )
+                    ExposedDropdownMenu(
+                        expanded = posExpanded,
+                        onDismissRequest = { posExpanded = false }
+                    ) {
+                        currentDept?.positions?.forEach { pos ->
+                            DropdownMenuItem(
+                                text = { Text(pos.name) },
+                                onClick = {
+                                    selectedPosId = pos.id
+                                    posExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+                
+                Spacer(Modifier.height(8.dp))
+                ExposedDropdownMenuBox(
+                    expanded = roleExpanded,
+                    onExpandedChange = { roleExpanded = it }
+                ) {
+                    val displayRoleName = when(selectedRole) {
+                        "worker" -> "Сотрудник"
+                        "manager" -> "Менеджер"
+                        "director" -> "Директор"
+                        else -> selectedRole
+                    }
+                    OutlinedTextField(
+                        value = displayRoleName,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Роль") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = roleExpanded) },
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                        modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable, true)
+                    )
+                    ExposedDropdownMenu(
+                        expanded = roleExpanded,
+                        onDismissRequest = { roleExpanded = false }
+                    ) {
+                        listOf("worker" to "Сотрудник", "manager" to "Менеджер", "director" to "Директор").forEach { (roleValue, roleName) ->
+                            DropdownMenuItem(
+                                text = { Text(roleName) },
+                                onClick = {
+                                    selectedRole = roleValue
+                                    roleExpanded = false
+                                }
+                            )
+                        }
                     }
                 }
                 
                 Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Button(onClick = {
-                        viewModel.updateWorker(user.id, selectedDeptId, selectedPosId, selectedRole)
-                        expanded = false
-                    }) {
-                        Text("Сохранить")
+                    Button(
+                        onClick = {
+                            viewModel.updateWorker(user.id, selectedDeptId, selectedPosId, selectedRole)
+                            expanded = false
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Сохранить", fontSize = 12.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                     }
-                    OutlinedButton(onClick = {
-                        viewModel.kickWorker(user.id)
-                    }, colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
-                        Text("Исключить")
+                    Spacer(Modifier.width(8.dp))
+                    OutlinedButton(
+                        onClick = { viewModel.kickWorker(user.id) },
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Исключить", fontSize = 12.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                     }
                 }
             }

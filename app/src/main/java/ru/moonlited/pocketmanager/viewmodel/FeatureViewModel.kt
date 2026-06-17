@@ -20,7 +20,8 @@ import java.time.Instant
 
 class PomodoroViewModel(
     private val applicationContext: android.content.Context,
-    private val apiService: ApiService,
+    private val db: ru.moonlited.pocketmanager.data.local.AppDatabase,
+    private val syncRepository: ru.moonlited.pocketmanager.data.repository.SyncRepository,
     private val sessionManager: SessionManager
 ) : ViewModel() {
     var isDebugMode = sessionManager.pomodoroIsDebugMode
@@ -185,14 +186,17 @@ class PomodoroViewModel(
         viewModelScope.launch {
             try {
                 val endTime = Instant.now()
-                apiService.savePomodoro(
-                    PomodoroCreate(
-                        startTime = startTimeStr ?: endTime.toString(),
-                        endTime = endTime.toString(),
-                        durationMinutes = sessionManager.pomodoroWorkDuration
+                // Register attendance and sync
+                db.attendanceDao().insert(
+                    ru.moonlited.pocketmanager.data.local.entity.AttendanceEntity(
+                        userId = sessionManager.getMyId(),
+                        date = startTimeStr ?: endTime.toString(),
+                        actionType = "check_in",
+                        updatedAt = Instant.now().toString()
                     )
                 )
                 startTimeStr = null
+                syncRepository.syncAll()
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -200,28 +204,91 @@ class PomodoroViewModel(
     }
 }
 
-class SanViewModel(private val apiService: ApiService, private val sessionManager: ru.moonlited.pocketmanager.utils.SessionManager) : ViewModel() {
+class SanViewModel(
+    private val db: ru.moonlited.pocketmanager.data.local.AppDatabase,
+    private val syncRepository: ru.moonlited.pocketmanager.data.repository.SyncRepository,
+    private val sessionManager: ru.moonlited.pocketmanager.utils.SessionManager
+) : ViewModel() {
     val isSaved = MutableStateFlow(false)
 
-    private val _sanHistory = MutableStateFlow<List<SanTestResponse>>(emptyList())
-    val sanHistory: StateFlow<List<SanTestResponse>> = _sanHistory
+    private val _sanHistory = MutableStateFlow<List<ru.moonlited.pocketmanager.data.api.SanTestResponse>>(emptyList())
+    val sanHistory: StateFlow<List<ru.moonlited.pocketmanager.data.api.SanTestResponse>> = _sanHistory
 
-    private val _maslachHistory = MutableStateFlow<List<MaslachResponse>>(emptyList())
-    val maslachHistory: StateFlow<List<MaslachResponse>> = _maslachHistory
+    private val _maslachHistory = MutableStateFlow<List<ru.moonlited.pocketmanager.data.api.MaslachResponse>>(emptyList())
+    val maslachHistory: StateFlow<List<ru.moonlited.pocketmanager.data.api.MaslachResponse>> = _maslachHistory
 
-    private val _munsterbergHistory = MutableStateFlow<List<MunsterbergResponse>>(emptyList())
-    val munsterbergHistory: StateFlow<List<MunsterbergResponse>> = _munsterbergHistory
+    private val _munsterbergHistory = MutableStateFlow<List<ru.moonlited.pocketmanager.data.api.MunsterbergResponse>>(emptyList())
+    val munsterbergHistory: StateFlow<List<ru.moonlited.pocketmanager.data.api.MunsterbergResponse>> = _munsterbergHistory
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
+    init {
+        viewModelScope.launch {
+            launch {
+                db.sanDao().getAllFlow().collect { entities ->
+                    _sanHistory.value = entities.map {
+                        ru.moonlited.pocketmanager.data.api.SanTestResponse(
+                            id = it.remoteId ?: it.localId,
+                            date = it.date,
+                            scoreS = it.scoreS,
+                            scoreA = it.scoreA,
+                            scoreN = it.scoreN,
+                            updatedAt = it.updatedAt,
+                            isDeleted = it.isDeleted
+                        )
+                    }
+                }
+            }
+            launch {
+                db.maslachDao().getAllFlow().collect { entities ->
+                    _maslachHistory.value = entities.map {
+                        ru.moonlited.pocketmanager.data.api.MaslachResponse(
+                            id = it.remoteId ?: it.localId,
+                            date = it.date,
+                            emotionalExhaustion = it.emotionalExhaustion,
+                            depersonalization = it.depersonalization,
+                            personalAccomplishment = it.personalAccomplishment,
+                            updatedAt = it.updatedAt,
+                            isDeleted = it.isDeleted
+                        )
+                    }
+                }
+            }
+            launch {
+                db.munsterbergDao().getAllFlow().collect { entities ->
+                    _munsterbergHistory.value = entities.map {
+                        ru.moonlited.pocketmanager.data.api.MunsterbergResponse(
+                            id = it.remoteId ?: it.localId,
+                            date = it.date,
+                            correctWords = it.correctWords,
+                            timeSpentSeconds = it.timeSpentSeconds,
+                            errors = it.errors,
+                            updatedAt = it.updatedAt,
+                            isDeleted = it.isDeleted
+                        )
+                    }
+                }
+            }
+        }
+    }
+
     fun saveResults(s: Float, a: Float, n: Float) {
         viewModelScope.launch {
             try {
-                apiService.saveSanTest(SanTestCreate(s, a, n))
+                db.sanDao().insert(
+                    ru.moonlited.pocketmanager.data.local.entity.SanResultEntity(
+                        userId = sessionManager.getMyId(),
+                        date = Instant.now().toString(),
+                        scoreS = s,
+                        scoreA = a,
+                        scoreN = n,
+                        updatedAt = Instant.now().toString()
+                    )
+                )
                 sessionManager.setTestCompletedToday("san")
                 isSaved.value = true
-                fetchHistory()
+                syncRepository.syncAll()
             } catch (e: Exception) { e.printStackTrace() }
         }
     }
@@ -229,13 +296,19 @@ class SanViewModel(private val apiService: ApiService, private val sessionManage
     fun saveMaslachTest(emotionalExhaustion: Float, depersonalization: Float, personalAccomplishment: Float) {
         viewModelScope.launch {
             try {
-                apiService.saveMaslachTest(
-                    ru.moonlited.pocketmanager.data.api.MaslachCreate(
-                        emotionalExhaustion, depersonalization, personalAccomplishment
+                db.maslachDao().insert(
+                    ru.moonlited.pocketmanager.data.local.entity.MaslachResultEntity(
+                        userId = sessionManager.getMyId(),
+                        date = Instant.now().toString(),
+                        emotionalExhaustion = emotionalExhaustion,
+                        depersonalization = depersonalization,
+                        personalAccomplishment = personalAccomplishment,
+                        updatedAt = Instant.now().toString()
                     )
                 )
                 sessionManager.setTestCompletedToday("maslach")
                 isSaved.value = true
+                syncRepository.syncAll()
             } catch (e: Exception) { e.printStackTrace() }
         }
     }
@@ -243,13 +316,19 @@ class SanViewModel(private val apiService: ApiService, private val sessionManage
     fun saveMunsterbergTest(correctWords: Int, timeSpentSeconds: Int, errors: Int) {
         viewModelScope.launch {
             try {
-                apiService.saveMunsterbergTest(
-                    ru.moonlited.pocketmanager.data.api.MunsterbergCreate(
-                        correctWords, timeSpentSeconds, errors
+                db.munsterbergDao().insert(
+                    ru.moonlited.pocketmanager.data.local.entity.MunsterbergResultEntity(
+                        userId = sessionManager.getMyId(),
+                        date = Instant.now().toString(),
+                        correctWords = correctWords,
+                        timeSpentSeconds = timeSpentSeconds,
+                        errors = errors,
+                        updatedAt = Instant.now().toString()
                     )
                 )
                 sessionManager.setTestCompletedToday("munsterberg")
                 isSaved.value = true
+                syncRepository.syncAll()
             } catch (e: Exception) { e.printStackTrace() }
         }
     }
@@ -258,9 +337,7 @@ class SanViewModel(private val apiService: ApiService, private val sessionManage
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                _sanHistory.value = apiService.getSanResults()
-                _maslachHistory.value = apiService.getMaslachResults()
-                _munsterbergHistory.value = apiService.getMunsterbergResults()
+                syncRepository.syncAll()
             } catch (e: Exception) { e.printStackTrace() }
             finally { _isLoading.value = false }
         }
@@ -271,23 +348,28 @@ class SanViewModel(private val apiService: ApiService, private val sessionManage
 
 class PomodoroViewModelFactory(
     private val applicationContext: android.content.Context,
-    private val apiService: ApiService,
+    private val db: ru.moonlited.pocketmanager.data.local.AppDatabase,
+    private val syncRepository: ru.moonlited.pocketmanager.data.repository.SyncRepository,
     private val sessionManager: SessionManager
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(PomodoroViewModel::class.java)) {
-            return PomodoroViewModel(applicationContext, apiService, sessionManager) as T
+            return PomodoroViewModel(applicationContext, db, syncRepository, sessionManager) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
 
-class SanViewModelFactory(private val apiService: ApiService, private val sessionManager: ru.moonlited.pocketmanager.utils.SessionManager) : ViewModelProvider.Factory {
+class SanViewModelFactory(
+    private val db: ru.moonlited.pocketmanager.data.local.AppDatabase,
+    private val syncRepository: ru.moonlited.pocketmanager.data.repository.SyncRepository,
+    private val sessionManager: ru.moonlited.pocketmanager.utils.SessionManager
+) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(SanViewModel::class.java)) {
-            return SanViewModel(apiService, sessionManager) as T
+            return SanViewModel(db, syncRepository, sessionManager) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

@@ -15,6 +15,21 @@ class ManagerCompanyViewModel(private val apiService: ApiService) : ViewModel() 
     private val _invitations = MutableStateFlow<List<InvitationResponse>>(emptyList())
     val invitations: StateFlow<List<InvitationResponse>> = _invitations
 
+    init {
+        loadInvitations()
+    }
+
+    fun loadInvitations() {
+        viewModelScope.launch {
+            try {
+                val list = apiService.getInvitations()
+                _invitations.value = list
+            } catch (e: Exception) {
+                // handle error
+            }
+        }
+    }
+
     fun generateInvite(departmentId: Int? = null, positionId: Int? = null) {
         viewModelScope.launch {
             try {
