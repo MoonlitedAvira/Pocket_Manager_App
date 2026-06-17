@@ -341,7 +341,20 @@ class MainActivity : ComponentActivity() {
                                 ManagerCompanyScreen(
                                     viewModel = managerCompanyViewModel,
                                     companyViewModel = companyManagementViewModel,
-                                    onOpenDrawer = { scope.launch { drawerState.open() } }
+                                    onOpenDrawer = { scope.launch { drawerState.open() } },
+                                    onNavigateToSchedule = { deptId, posId -> 
+                                        navController.navigate(PositionScheduleRoute(deptId, posId)) 
+                                    }
+                                )
+                            }
+                            composable<PositionScheduleRoute> { backStackEntry ->
+                                val route = backStackEntry.toRoute<PositionScheduleRoute>()
+                                val companyManagementViewModel: ru.moonlited.pocketmanager.viewmodel.CompanyManagementViewModel = viewModel(factory = companyManagementViewModelFactory)
+                                ru.moonlited.pocketmanager.ui.screens.PositionScheduleScreen(
+                                    departmentId = route.departmentId,
+                                    positionId = route.positionId,
+                                    viewModel = companyManagementViewModel,
+                                    onNavigateBack = { navController.popBackStack() }
                                 )
                             }
                         }

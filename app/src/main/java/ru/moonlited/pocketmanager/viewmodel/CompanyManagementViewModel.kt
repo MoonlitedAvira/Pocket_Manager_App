@@ -52,10 +52,24 @@ class CompanyManagementViewModel(private val apiService: ApiService) : ViewModel
         }
     }
 
-    fun updatePosition(posId: Int, name: String? = null, hierarchyLevel: Int? = null) {
+    fun updatePosition(
+        deptId: Int, 
+        posId: Int, 
+        name: String? = null, 
+        hierarchyLevel: Int? = null,
+        scheduleType: String? = null,
+        scheduleDays: String? = null,
+        scheduleStart: String? = null,
+        scheduleEnd: String? = null,
+        scheduleNormMinutes: Int? = null
+    ) {
         viewModelScope.launch {
             try {
-                apiService.updatePosition(posId, PositionUpdateRequest(name, hierarchyLevel))
+                apiService.updatePosition(
+                    deptId, 
+                    posId, 
+                    PositionUpdateRequest(name, hierarchyLevel, null, scheduleType, scheduleDays, scheduleStart, scheduleEnd, scheduleNormMinutes)
+                )
                 loadData()
             } catch (e: Exception) {
                 e.printStackTrace()

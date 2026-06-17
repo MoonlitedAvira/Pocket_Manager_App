@@ -23,7 +23,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 fun ManagerCompanyScreen(
     viewModel: ManagerCompanyViewModel,
     companyViewModel: ru.moonlited.pocketmanager.viewmodel.CompanyManagementViewModel,
-    onOpenDrawer: () -> Unit
+    onOpenDrawer: () -> Unit,
+    onNavigateToSchedule: (Int, Int) -> Unit
 ) {
     val invitations by viewModel.invitations.collectAsState()
 
@@ -71,7 +72,7 @@ fun ManagerCompanyScreen(
 
             when (selectedTabIndex) {
                 0 -> WorkerManagementTab(companyViewModel)
-                1 -> DepartmentsTab(companyViewModel)
+                1 -> DepartmentsTab(companyViewModel, onNavigateToSchedule)
                 2 -> Column(
                     modifier = Modifier.fillMaxSize().padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)

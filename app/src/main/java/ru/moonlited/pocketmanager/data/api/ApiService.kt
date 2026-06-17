@@ -77,6 +77,9 @@ interface ApiService {
     @GET("/users/me")
     suspend fun getMe(): UserResponse
 
+    @GET("/users/me/position")
+    suspend fun getMyPosition(): PositionResponse
+
     @POST("/users/attendance")
     suspend fun checkIn(@Body request: AttendanceCreate): AttendanceResponse
 
@@ -110,8 +113,8 @@ interface ApiService {
     @POST("/positions")
     suspend fun createPosition(@Body request: PositionCreateRequest): PositionResponse
 
-    @PUT("/positions/{pos_id}")
-    suspend fun updatePosition(@Path("pos_id") posId: Int, @Body request: PositionUpdateRequest): PositionResponse
+    @PUT("/departments/{dept_id}/positions/{pos_id}")
+    suspend fun updatePosition(@Path("dept_id") deptId: Int, @Path("pos_id") posId: Int, @Body request: PositionUpdateRequest): PositionResponse
 
     @PUT("/users/{user_id}")
     suspend fun updateUser(@Path("user_id") userId: Int, @Body request: WorkerUpdateRequest): UserResponse

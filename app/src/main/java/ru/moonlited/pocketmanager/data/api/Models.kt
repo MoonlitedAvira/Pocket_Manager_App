@@ -162,22 +162,40 @@ data class FCMTokenUpdate(
 @Serializable
 data class PositionResponse(
     val id: Int,
-    val name: String,
     @SerialName("department_id") val departmentId: Int,
-    @SerialName("hierarchy_level") val hierarchyLevel: Int
+    val name: String,
+    @SerialName("hierarchy_level") val hierarchyLevel: Int,
+    val permissions: String? = null,
+    @SerialName("schedule_type") val scheduleType: String = "none",
+    @SerialName("schedule_days") val scheduleDays: String? = null,
+    @SerialName("schedule_start") val scheduleStart: String? = null,
+    @SerialName("schedule_end") val scheduleEnd: String? = null,
+    @SerialName("schedule_norm_minutes") val scheduleNormMinutes: Int? = null
 )
 
 @Serializable
 data class PositionCreateRequest(
     val name: String,
     @SerialName("department_id") val departmentId: Int,
-    @SerialName("hierarchy_level") val hierarchyLevel: Int = 0
+    @SerialName("hierarchy_level") val hierarchyLevel: Int,
+    val permissions: String? = null,
+    @SerialName("schedule_type") val scheduleType: String? = "none",
+    @SerialName("schedule_days") val scheduleDays: String? = null,
+    @SerialName("schedule_start") val scheduleStart: String? = null,
+    @SerialName("schedule_end") val scheduleEnd: String? = null,
+    @SerialName("schedule_norm_minutes") val scheduleNormMinutes: Int? = null
 )
 
 @Serializable
 data class PositionUpdateRequest(
     val name: String? = null,
-    @SerialName("hierarchy_level") val hierarchyLevel: Int? = null
+    @SerialName("hierarchy_level") val hierarchyLevel: Int? = null,
+    val permissions: String? = null,
+    @SerialName("schedule_type") val scheduleType: String? = null,
+    @SerialName("schedule_days") val scheduleDays: String? = null,
+    @SerialName("schedule_start") val scheduleStart: String? = null,
+    @SerialName("schedule_end") val scheduleEnd: String? = null,
+    @SerialName("schedule_norm_minutes") val scheduleNormMinutes: Int? = null
 )
 
 @Serializable

@@ -44,3 +44,6 @@ object ManagerCompanyRoute
 
 @Serializable
 object WorkingDayTimerRoute
+
+@Serializable
+data class PositionScheduleRoute(val departmentId: Int, val positionId: Int)

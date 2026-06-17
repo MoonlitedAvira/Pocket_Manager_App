@@ -11,20 +11,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import ru.moonlited.pocketmanager.viewmodel.ProfileViewModel
-import java.time.Duration
 import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
-import kotlin.math.max
+import java.time.ZoneId
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,36 +29,34 @@ fun WorkingDayTimerScreen(
     onNavigateToPomodoro: () -> Unit
 ) {
     val attendances by viewModel.attendances.collectAsState()
+    val position by viewModel.position.collectAsState()
 
     val latestCheckIn = attendances.filter { it.actionType == "check_in" }.maxByOrNull { it.date }
     val latestCheckOut = attendances.filter { it.actionType == "check_out" }.maxByOrNull { it.date }
     
-    // Сервер PostgreSQL отдаёт время без зоны (naive), которое соответствует часовому поясу сервера (UTC+3).
-    // Мы явно указываем +03:00, чтобы получить правильный Instant.
     val checkInInstant = latestCheckIn?.date?.let { 
         val dateStr = if (!it.endsWith("Z") && !it.contains("+")) it + "+03:00" else it
         java.time.OffsetDateTime.parse(dateStr).toInstant()
     }
-    val checkInLocal = checkInInstant?.atZone(java.time.ZoneId.systemDefault())?.toLocalDateTime()
+    val checkInLocal = checkInInstant?.atZone(ZoneId.systemDefault())?.toLocalDateTime()
     val autoStopTime = checkInLocal?.withHour(20)?.withMinute(0)?.withSecond(0)
     
     val isWorking = latestCheckIn != null && 
         (latestCheckOut == null || latestCheckIn.date > latestCheckOut.date) &&
-        (autoStopTime == null || java.time.LocalDateTime.now().isBefore(autoStopTime))
+        (autoStopTime == null || LocalDateTime.now().isBefore(autoStopTime))
 
     var elapsedTime by remember { mutableStateOf(0L) }
 
     LaunchedEffect(isWorking, latestCheckIn) {
         if (isWorking && checkInLocal != null && autoStopTime != null) {
             while (isWorking) {
-                val now = java.time.LocalDateTime.now()
+                val now = LocalDateTime.now()
                 val endTime = if (now.isAfter(autoStopTime)) autoStopTime else now
                 elapsedTime = java.time.Duration.between(checkInLocal, endTime).seconds
                 if (elapsedTime < 0) elapsedTime = 0
                 delay(1000)
             }
         } else if (!isWorking && latestCheckIn != null && checkInLocal != null && autoStopTime != null && latestCheckOut == null) {
-            // Auto-stopped state
             elapsedTime = java.time.Duration.between(checkInLocal, autoStopTime).seconds
             if (elapsedTime < 0) elapsedTime = 0
         }
@@ -74,9 +67,32 @@ fun WorkingDayTimerScreen(
     val seconds = elapsedTime % 60
     val timeString = String.format("%02d:%02d:%02d", hours, minutes, seconds)
 
-    val latenessMinutes = if (checkInLocal != null) {
-        val expectedStart = checkInLocal.withHour(9).withMinute(0).withSecond(0)
-        if (checkInLocal.isAfter(expectedStart)) java.time.Duration.between(expectedStart, checkInLocal).toMinutes() else 0
+    // Parse schedule
+    val scheduleType = position?.scheduleType ?: "none"
+    val scheduleNormMinutes = position?.scheduleNormMinutes ?: 480 // default 8h
+    val maxSeconds = scheduleNormMinutes * 60f
+    
+    val scheduleStartStr = position?.scheduleStart?.take(5)
+    val scheduleEndStr = position?.scheduleEnd?.take(5)
+    
+    val scheduleText = when (scheduleType) {
+        "rigid" -> "График: $scheduleStartStr - $scheduleEndStr"
+        "flexible_daily" -> "Гибкий ($scheduleStartStr - $scheduleEndStr, норма: ${scheduleNormMinutes / 60} ч)"
+        "flexible_weekly" -> "Недельная норма: ${scheduleNormMinutes / 60} ч"
+        else -> "Без графика (свободное посещение)"
+    }
+
+    // Check if today is a working day
+    val todayDow = LocalDateTime.now().dayOfWeek.value // 1 (Mon) - 7 (Sun)
+    val workingDays = position?.scheduleDays?.split(",")?.mapNotNull { it.toIntOrNull() }?.toSet() ?: emptySet()
+    val isWorkDay = scheduleType == "none" || workingDays.isEmpty() || workingDays.contains(todayDow)
+
+    val latenessMinutes = if (checkInLocal != null && scheduleStartStr != null && scheduleType == "rigid") {
+        try {
+            val (h, m) = scheduleStartStr.split(":").map { it.toInt() }
+            val expectedStart = checkInLocal.withHour(h).withMinute(m).withSecond(0)
+            if (checkInLocal.isAfter(expectedStart)) java.time.Duration.between(expectedStart, checkInLocal).toMinutes() else 0
+        } catch (e: Exception) { 0 }
     } else 0
 
     Scaffold(
@@ -99,7 +115,7 @@ fun WorkingDayTimerScreen(
         ) {
             Text("Рабочий день", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(8.dp))
-            Text("График: 09:00 - 18:00", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(scheduleText, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             
             Spacer(modifier = Modifier.height(48.dp))
 
@@ -116,7 +132,7 @@ fun WorkingDayTimerScreen(
                         style = Stroke(width = 24.dp.toPx(), cap = StrokeCap.Round)
                     )
                     
-                    val sweep = (elapsedTime % 28800) / 28800f * 360f
+                    val sweep = if (maxSeconds > 0) (elapsedTime % maxSeconds) / maxSeconds * 360f else 0f
                     drawArc(
                         color = Color(0xFF4CAF50),
                         startAngle = -90f,
@@ -143,7 +159,7 @@ fun WorkingDayTimerScreen(
                         .background(MaterialTheme.colorScheme.errorContainer, shape = CircleShape)
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                 )
-            } else {
+            } else if (scheduleType == "rigid") {
                 Text(
                     text = "Вовремя",
                     color = Color(0xFF4CAF50),
@@ -156,36 +172,44 @@ fun WorkingDayTimerScreen(
 
             Spacer(modifier = Modifier.height(48.dp))
 
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(24.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val context = androidx.compose.ui.platform.LocalContext.current
-                val sessionManager = ru.moonlited.pocketmanager.utils.SessionManager(context)
+            if (isWorkDay || isWorking) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(24.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    val sessionManager = ru.moonlited.pocketmanager.utils.SessionManager(context)
 
-                if (isWorking) {
-                    FloatingActionButton(
-                        onClick = { viewModel.checkIn("check_out") },
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                        contentColor = MaterialTheme.colorScheme.onErrorContainer
-                    ) {
-                        Text("Стоп", modifier = Modifier.padding(16.dp), fontWeight = FontWeight.Bold)
+                    if (isWorking) {
+                        FloatingActionButton(
+                            onClick = { viewModel.checkIn("check_out") },
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer
+                        ) {
+                            Text("Стоп", modifier = Modifier.padding(16.dp), fontWeight = FontWeight.Bold)
+                        }
+                    } else {
+                        FloatingActionButton(
+                            onClick = { viewModel.checkIn("check_in") },
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = "Старт")
+                        }
                     }
-                } else {
-                    FloatingActionButton(
-                        onClick = { viewModel.checkIn("check_in") },
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    ) {
-                        Icon(Icons.Default.PlayArrow, contentDescription = "Старт")
+
+                    if (sessionManager.usePomodoroMethod) {
+                        OutlinedButton(onClick = onNavigateToPomodoro) {
+                            Text("Помодоро")
+                        }
                     }
                 }
-
-                if (sessionManager.usePomodoroMethod) {
-                    OutlinedButton(onClick = onNavigateToPomodoro) {
-                        Text("Помодоро")
-                    }
-                }
+            } else {
+                Text(
+                    text = "Сегодня по графику у вас выходной",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.error
+                )
             }
         }
     }

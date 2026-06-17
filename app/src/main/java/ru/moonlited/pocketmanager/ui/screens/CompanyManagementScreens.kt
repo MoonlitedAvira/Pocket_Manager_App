@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,7 +21,7 @@ import ru.moonlited.pocketmanager.data.api.UserResponse
 import ru.moonlited.pocketmanager.viewmodel.CompanyManagementViewModel
 
 @Composable
-fun DepartmentsTab(viewModel: CompanyManagementViewModel) {
+fun DepartmentsTab(viewModel: CompanyManagementViewModel, onNavigateToSchedule: (Int, Int) -> Unit) {
     val departments by viewModel.departments.collectAsState()
     var newDeptName by remember { mutableStateOf("") }
     
@@ -55,7 +56,7 @@ fun DepartmentsTab(viewModel: CompanyManagementViewModel) {
         
         LazyColumn {
             items(departments) { dept ->
-                DepartmentCard(dept, viewModel)
+                DepartmentCard(dept, viewModel, onNavigateToSchedule)
                 Spacer(Modifier.height(8.dp))
             }
         }
@@ -63,7 +64,7 @@ fun DepartmentsTab(viewModel: CompanyManagementViewModel) {
 }
 
 @Composable
-fun DepartmentCard(dept: DepartmentResponse, viewModel: CompanyManagementViewModel) {
+fun DepartmentCard(dept: DepartmentResponse, viewModel: CompanyManagementViewModel, onNavigateToSchedule: (Int, Int) -> Unit) {
     var newPosName by remember { mutableStateOf("") }
     var showPositions by remember { mutableStateOf(false) }
 
@@ -86,12 +87,17 @@ fun DepartmentCard(dept: DepartmentResponse, viewModel: CompanyManagementViewMod
                         Text("${pos.name} (Уровень: ${pos.hierarchyLevel})", modifier = Modifier.weight(1f))
                         
                         IconButton(onClick = {
-                            viewModel.updatePosition(pos.id, pos.name, pos.hierarchyLevel + 1)
+                            onNavigateToSchedule(dept.id, pos.id)
+                        }) {
+                            Icon(Icons.Default.Settings, "Настроить график")
+                        }
+                        IconButton(onClick = {
+                            viewModel.updatePosition(dept.id, pos.id, pos.name, pos.hierarchyLevel + 1)
                         }) {
                             Icon(Icons.Default.ArrowUpward, "Повысить уровень")
                         }
                         IconButton(onClick = {
-                            viewModel.updatePosition(pos.id, pos.name, pos.hierarchyLevel - 1)
+                            viewModel.updatePosition(dept.id, pos.id, pos.name, pos.hierarchyLevel - 1)
                         }) {
                             Icon(Icons.Default.ArrowDownward, "Понизить уровень")
                         }

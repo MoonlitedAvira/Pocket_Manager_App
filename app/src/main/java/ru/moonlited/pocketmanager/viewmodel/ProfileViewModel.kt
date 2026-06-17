@@ -16,6 +16,9 @@ class ProfileViewModel(private val apiService: ApiService, private val sessionMa
     private val _user = MutableStateFlow<UserResponse?>(null)
     val user: StateFlow<UserResponse?> = _user
 
+    private val _position = MutableStateFlow<ru.moonlited.pocketmanager.data.api.PositionResponse?>(null)
+    val position: StateFlow<ru.moonlited.pocketmanager.data.api.PositionResponse?> = _position
+
     private val _attendances = MutableStateFlow<List<AttendanceResponse>>(emptyList())
     val attendances: StateFlow<List<AttendanceResponse>> = _attendances
 
@@ -33,6 +36,11 @@ class ProfileViewModel(private val apiService: ApiService, private val sessionMa
                 val me = apiService.getMe()
                 _user.value = me
                 sessionManager.saveMyId(me.id)
+                try {
+                    _position.value = apiService.getMyPosition()
+                } catch (e: Exception) {
+                    _position.value = null
+                }
                 _attendances.value = apiService.getAttendance()
             } catch (e: Exception) {
                 e.printStackTrace()
