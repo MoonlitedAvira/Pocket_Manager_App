@@ -39,8 +39,6 @@ enum class StatsTestType(val title: String) {
 
 data class ChartPoint(val xLabel: String, val values: List<Float>)
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Suppress("DEPRECATION")
 @Composable
 fun StatsScreen(viewModel: SanViewModel, onOpenDrawer: () -> Unit, initialTest: String? = null) {
     val sanHistory by viewModel.sanHistory.collectAsState()
@@ -48,16 +46,46 @@ fun StatsScreen(viewModel: SanViewModel, onOpenDrawer: () -> Unit, initialTest: 
     val munsterbergHistory by viewModel.munsterbergHistory.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
 
+    LaunchedEffect(Unit) {
+        viewModel.fetchHistory()
+    }
+
+    StatsContent(
+        sanHistory = sanHistory,
+        maslachHistory = maslachHistory,
+        munsterbergHistory = munsterbergHistory,
+        isLoading = isLoading,
+        initialTest = initialTest,
+        topBar = {
+            @OptIn(ExperimentalMaterial3Api::class)
+            TopAppBar(
+                title = { Text("Статистика") },
+                navigationIcon = {
+                    IconButton(onClick = onOpenDrawer) { Icon(Icons.Default.Menu, "Меню") }
+                },
+                actions = it
+            )
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Suppress("DEPRECATION")
+@Composable
+fun StatsContent(
+    sanHistory: List<SanTestResponse>,
+    maslachHistory: List<MaslachResponse>,
+    munsterbergHistory: List<MunsterbergResponse>,
+    isLoading: Boolean,
+    initialTest: String? = null,
+    topBar: @Composable (actions: @Composable RowScope.() -> Unit) -> Unit
+) {
     var selectedTest by remember { 
         mutableStateOf(
             StatsTestType.entries.find { it.name == initialTest } ?: StatsTestType.SAN
         ) 
     }
     var dropdownExpanded by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        viewModel.fetchHistory()
-    }
 
     var infoDialogTitle by remember { mutableStateOf<String?>(null) }
     var infoDialogText by remember { mutableStateOf<String?>(null) }
@@ -148,35 +176,29 @@ fun StatsScreen(viewModel: SanViewModel, onOpenDrawer: () -> Unit, initialTest: 
             }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Статистика") },
-                navigationIcon = {
-                    IconButton(onClick = onOpenDrawer) { Icon(Icons.Default.Menu, "Меню") }
-                },
-                actions = {
-                    IconButton(onClick = {
-                        when (selectedTest) {
-                            StatsTestType.SAN -> {
-                                infoDialogTitle = "САН"
-                                infoDialogText = "С - Самочувствие\nА - Активность\nН - Настроение\nГрафик показывает среднее значение за день."
-                            }
-                            StatsTestType.MASLACH -> {
-                                infoDialogTitle = "Тест Маслач"
-                                infoDialogText = "ЭИ - Эмоциональное истощение\nДП - Деперсонализация\nПД - Профессиональные достижения\nГрафик усреднен по неделям."
-                            }
-                            StatsTestType.MUNSTERBERG -> {
-                                infoDialogTitle = "Тест Мюнстерберга"
-                                infoDialogText = "Отображает количество правильно найденных слов и время (в секундах).\nГрафик усреднен по неделям."
-                            }
-                        }
-                    }) {
-                        Icon(Icons.Default.Info, contentDescription = "Инфо")
-                    }
+    val actionsContent: @Composable RowScope.() -> Unit = {
+        IconButton(onClick = {
+            when (selectedTest) {
+                StatsTestType.SAN -> {
+                    infoDialogTitle = "САН"
+                    infoDialogText = "С - Самочувствие\nА - Активность\nН - Настроение\nГрафик показывает среднее значение за день."
                 }
-            )
+                StatsTestType.MASLACH -> {
+                    infoDialogTitle = "Тест Маслач"
+                    infoDialogText = "ЭИ - Эмоциональное истощение\nДП - Деперсонализация\nПД - Профессиональные достижения\nГрафик усреднен по неделям."
+                }
+                StatsTestType.MUNSTERBERG -> {
+                    infoDialogTitle = "Тест Мюнстерберга"
+                    infoDialogText = "Отображает количество правильно найденных слов и время (в секундах).\nГрафик усреднен по неделям."
+                }
+            }
+        }) {
+            Icon(Icons.Default.Info, contentDescription = "Инфо")
         }
+    }
+
+    Scaffold(
+        topBar = { topBar(actionsContent) }
     ) { padding ->
         if (isLoading && sanHistory.isEmpty() && maslachHistory.isEmpty() && munsterbergHistory.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

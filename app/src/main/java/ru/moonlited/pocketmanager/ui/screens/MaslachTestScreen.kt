@@ -61,6 +61,7 @@ fun MaslachTestScreen(
 
     LaunchedEffect(isSaved) {
         if (isSaved) {
+            viewModel.resetSavedState()
             viewModel.resetState()
             onNavigateToStats()
         }

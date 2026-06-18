@@ -108,9 +108,15 @@ fun SanTestScreen(
                 Text("Результаты успешно сохранены!", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
                 Spacer(modifier = Modifier.height(16.dp))
                 if (fromWorkStart) {
-                    Button(onClick = { onNavigateToTimer() }) { Text("Перейти к таймеру работы") }
+                    Button(onClick = { 
+                        viewModel.resetSavedState()
+                        onNavigateToTimer() 
+                    }) { Text("Перейти к таймеру работы") }
                 } else {
-                    Button(onClick = { onNavigateToStats() }) { Text("Перейти к статистике") }
+                    Button(onClick = { 
+                        viewModel.resetSavedState()
+                        onNavigateToStats() 
+                    }) { Text("Перейти к статистике") }
                 }
                 Spacer(modifier = Modifier.weight(1f))
             } else {

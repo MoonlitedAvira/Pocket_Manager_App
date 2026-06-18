@@ -211,6 +211,10 @@ class SanViewModel(
 ) : ViewModel() {
     val isSaved = MutableStateFlow(false)
 
+    fun resetSavedState() {
+        isSaved.value = false
+    }
+
     private val _sanHistory = MutableStateFlow<List<ru.moonlited.pocketmanager.data.api.SanTestResponse>>(emptyList())
     val sanHistory: StateFlow<List<ru.moonlited.pocketmanager.data.api.SanTestResponse>> = _sanHistory
 

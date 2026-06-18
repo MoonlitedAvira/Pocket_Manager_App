@@ -22,6 +22,9 @@ object SanTestRoute
 data class StatsRoute(val initialTest: String? = null)
 
 @Serializable
+data class WorkerStatsRoute(val userId: Int)
+
+@Serializable
 object TestsRoute
 
 @Serializable

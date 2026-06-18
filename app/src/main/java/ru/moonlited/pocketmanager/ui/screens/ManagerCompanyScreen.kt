@@ -24,7 +24,8 @@ fun ManagerCompanyScreen(
     viewModel: ManagerCompanyViewModel,
     companyViewModel: ru.moonlited.pocketmanager.viewmodel.CompanyManagementViewModel,
     onOpenDrawer: () -> Unit,
-    onNavigateToSchedule: (Int, Int) -> Unit
+    onNavigateToSchedule: (Int, Int) -> Unit,
+    onNavigateToWorkerStats: (Int) -> Unit
 ) {
     val invitations by viewModel.invitations.collectAsState()
 
@@ -71,7 +72,7 @@ fun ManagerCompanyScreen(
             }
 
             when (selectedTabIndex) {
-                0 -> WorkerManagementTab(companyViewModel)
+                0 -> WorkerManagementTab(companyViewModel, onNavigateToWorkerStats)
                 1 -> DepartmentsTab(companyViewModel, onNavigateToSchedule)
                 2 -> Column(
                     modifier = Modifier.fillMaxSize().padding(16.dp),

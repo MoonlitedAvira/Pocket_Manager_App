@@ -128,7 +128,7 @@ fun DepartmentCard(dept: DepartmentResponse, viewModel: CompanyManagementViewMod
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WorkerManagementTab(viewModel: CompanyManagementViewModel) {
+fun WorkerManagementTab(viewModel: CompanyManagementViewModel, onNavigateToWorkerStats: (Int) -> Unit) {
     val users by viewModel.users.collectAsState()
     val departments by viewModel.departments.collectAsState()
 
@@ -187,7 +187,7 @@ fun WorkerManagementTab(viewModel: CompanyManagementViewModel) {
 
         LazyColumn(modifier = Modifier.weight(1f)) {
             items(filteredUsers) { user ->
-                WorkerCard(user, departments, viewModel)
+                WorkerCard(user, departments, viewModel, onNavigateToWorkerStats)
                 Spacer(Modifier.height(8.dp))
             }
         }
@@ -196,7 +196,7 @@ fun WorkerManagementTab(viewModel: CompanyManagementViewModel) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WorkerCard(user: UserResponse, departments: List<DepartmentResponse>, viewModel: CompanyManagementViewModel) {
+fun WorkerCard(user: UserResponse, departments: List<DepartmentResponse>, viewModel: CompanyManagementViewModel, onNavigateToWorkerStats: (Int) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     var selectedDeptId by remember(user.departmentId) { mutableStateOf(user.departmentId) }
     var selectedPosId by remember(user.positionId) { mutableStateOf(user.positionId) }
@@ -206,8 +206,6 @@ fun WorkerCard(user: UserResponse, departments: List<DepartmentResponse>, viewMo
     var posExpanded by remember { mutableStateOf(false) }
     var roleExpanded by remember { mutableStateOf(false) }
     
-    var showStats by remember { mutableStateOf(false) }
-
     Card(modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(user.email, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -237,8 +235,7 @@ fun WorkerCard(user: UserResponse, departments: List<DepartmentResponse>, viewMo
                 Spacer(Modifier.width(4.dp))
                 TextButton(
                     onClick = { 
-                        viewModel.loadWorkerStats(user.id)
-                        showStats = true 
+                        onNavigateToWorkerStats(user.id)
                     },
                     modifier = Modifier.weight(1f)
                 ) {
@@ -371,43 +368,5 @@ fun WorkerCard(user: UserResponse, departments: List<DepartmentResponse>, viewMo
                 }
             }
         }
-    }
-    
-    if (showStats) {
-        val stats by viewModel.workerStats.collectAsState()
-        
-        AlertDialog(
-            onDismissRequest = { 
-                showStats = false 
-                viewModel.clearWorkerStats()
-            },
-            title = { Text("Статистика: ${user.email}") },
-            text = {
-                if (stats == null) {
-                    Text("Загрузка или нет доступа...")
-                } else {
-                    // Re-use StatsCharts if possible. Let's just do a simple list or charts.
-                    // For brevity, we'll just show the latest values.
-                    Column {
-                        Text("Последние тесты:", fontWeight = FontWeight.Bold)
-                        stats?.sanResults?.lastOrNull()?.let {
-                            Text("САН: ${it.scoreS}, ${it.scoreA}, ${it.scoreN}")
-                        }
-                        stats?.maslachResults?.lastOrNull()?.let {
-                            Text("Маслач: ЭИ=${it.emotionalExhaustion}, ДП=${it.depersonalization}")
-                        }
-                        stats?.munsterbergResults?.lastOrNull()?.let {
-                            Text("Мюнстерберг: Ошибки=${it.errors}, Время=${it.timeSpentSeconds}c")
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { 
-                    showStats = false
-                    viewModel.clearWorkerStats()
-                }) { Text("Закрыть") }
-            }
-        )
     }
 }
